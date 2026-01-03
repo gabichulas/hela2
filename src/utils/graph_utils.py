@@ -1,9 +1,10 @@
 import osmnx as ox
 import networkx as nx
 import pandas as pd
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, List
 import pickle
 import os
+import random
 
 
 def get_graph_by_city(
@@ -144,3 +145,173 @@ def plot_graph(G: nx.MultiDiGraph, save_path: Optional[str] = None):
     )
     
     return fig, ax
+
+
+def get_ice_cream_places(
+    city: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    radius: int = 1000,
+    cache_dir: str = "cache",
+) -> pd.DataFrame:
+    """
+    Devuelve un DataFrame con heladerías (amenity=ice_cream) en un radio dado.
+    Si se indica city, se geocodifica; si no, usa lat/lon.
+    """
+    if city:
+        lat, lon = ox.geocode(city)
+    else:
+        if latitude is None or longitude is None:
+            raise ValueError("Debes indicar una ciudad o coordenadas (latitud y longitud).")
+        lat, lon = latitude, longitude
+
+    ox.settings.use_cache = True
+    ox.settings.cache_folder = cache_dir
+
+    gdf = ox.features_from_point((lat, lon), tags={"amenity": "ice_cream"}, dist=radius)
+    if gdf.empty:
+        return pd.DataFrame(columns=["osmid", "name", "lat", "lon", "addr:street", "addr:housenumber", "amenity"])
+
+    df = gdf.reset_index()
+    df["lat"] = df.geometry.y
+    df["lon"] = df.geometry.x
+
+    cols = ["osmid", "name", "lat", "lon", "addr:street", "addr:housenumber", "amenity"]
+    for col in cols:
+        if col not in df.columns:
+            df[col] = None
+    df = df[cols]
+    df = df.where(pd.notnull(df), None)  # Reemplaza NaN por None para JSON
+    return df
+
+
+def aco_tour_through_nodes(
+    G: nx.MultiDiGraph,
+    start: Any,
+    targets: List[Any],
+    weight: str = "length",
+    n_ants: int = 30,
+    n_iters: int = 80,
+    alpha: float = 1.0,
+    beta: float = 2.0,
+    rho: float = 0.5,
+    q: float = 100.0,
+    tau_bounds: Tuple[float, float] = (1e-4, 1.0),
+    seed: Optional[int] = None,
+) -> Tuple[Optional[List[Any]], float, List[float], List[Any], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    ACO para recorrer todos los nodos objetivo (heladerías) en una sola pasada.
+    Se modela como TSP sobre el conjunto (start + targets) usando distancias de camino más corto.
+
+    Returns:
+        tour_order: orden de nodos visitados (start + heladerías) en grafo original.
+        tour_cost: costo total (suma de distancias entre nodos consecutivos).
+        history: mejor costo por iteración.
+        full_path: secuencia expandida de nodos del grafo para dibujar la ruta completa.
+        pairwise: lista de distancias precomputadas entre pares.
+        tour_legs: lista de segmentos usados por el tour con su camino detallado.
+    """
+    if start not in G:
+        raise ValueError("El nodo de inicio no existe en el grafo")
+    unique_targets = [t for t in dict.fromkeys(targets) if t != start]
+    if not unique_targets:
+        raise ValueError("Se necesita al menos una heladería destino")
+    nodes = [start] + unique_targets
+
+    tau_min, tau_max = tau_bounds
+    rng = random.Random(seed)
+
+    # Precalcula las rutas más cortas y las distancias entre todos los pares de nodos en los nodos
+    dist: Dict[Tuple[Any, Any], float] = {}
+    spaths: Dict[Tuple[Any, Any], List[Any]] = {}
+    for i in nodes:
+        lengths, paths = nx.single_source_dijkstra(G, i, weight=weight)
+        for j in nodes:
+            if i == j:
+                continue
+            if j not in lengths:
+                raise ValueError(f"No hay camino entre {i} y {j}")
+            dist[(i, j)] = lengths[j]
+            spaths[(i, j)] = paths[j]
+
+    tau = {(i, j): max(tau_min, 1e-3) for i in nodes for j in nodes if i != j}
+
+    best_order: Optional[List[Any]] = None
+    best_cost = float("inf")
+    history: List[float] = []
+
+    def build_tour() -> Tuple[List[Any], float]:
+        order = [start]
+        unvisited = set(unique_targets)
+        total_cost = 0.0
+        while unvisited:
+            current = order[-1]
+            choices = []
+            for cand in unvisited:
+                d = dist[(current, cand)]
+                pher = tau[(current, cand)]
+                heuristic = 1.0 / d if d > 0 else 1e6
+                score = (pher ** alpha) * (heuristic ** beta)
+                choices.append((score, cand, d))
+            total_score = sum(c[0] for c in choices)
+            if total_score <= 0:
+                chosen = rng.choice(choices)
+            else:
+                r = rng.random() * total_score
+                accum = 0.0
+                chosen = choices[-1]
+                for item in choices:
+                    accum += item[0]
+                    if accum >= r:
+                        chosen = item
+                        break
+            _, nxt, d = chosen
+            order.append(nxt)
+            unvisited.remove(nxt)
+            total_cost += d
+        # Cierre del circuito explícito: volver al inicio
+        order.append(start)
+        total_cost += dist[(order[-2], start)]
+        return order, total_cost
+
+    for _ in range(n_iters):
+        iter_best_order = None
+        iter_best_cost = float("inf")
+
+        for _ in range(n_ants):
+            order, cost = build_tour()
+            if cost < iter_best_cost:
+                iter_best_cost = cost
+                iter_best_order = order
+
+        # Evaporación
+        for key in tau:
+            tau[key] = max(tau_min, (1 - rho) * tau[key])
+
+        if iter_best_order is not None:
+            delta = q / iter_best_cost
+            for a, b in zip(iter_best_order, iter_best_order[1:]):
+                tau[(a, b)] = min(tau_max, tau[(a, b)] + delta)
+
+            if iter_best_cost < best_cost:
+                best_cost = iter_best_cost
+                best_order = iter_best_order
+
+        history.append(best_cost)
+
+    if best_order is None:
+        return None, float("inf"), history, [], [], []
+
+    # Reconstruir path completo en el grafo original concatenando caminos más cortos
+    full_path: List[Any] = []
+    tour_legs: List[Dict[str, Any]] = []
+    for a, b in zip(best_order, best_order[1:]):
+        leg = spaths[(a, b)]
+        if full_path:
+            leg = leg[1:]  # evitar repetir nodo de unión
+        full_path.extend(leg)
+        tour_legs.append({"from": a, "to": b, "distance": dist[(a, b)], "path": spaths[(a, b)]})
+
+    pairwise = [{"from": a, "to": b, "distance": d} for (a, b), d in dist.items()]
+
+    return best_order, best_cost, history, full_path, pairwise, tour_legs

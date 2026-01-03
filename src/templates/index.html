@@ -100,8 +100,40 @@
             place-items: center;
             overflow: hidden;
         }
+        .map-frame.sm { aspect-ratio: 4 / 3; }
         .map-frame img { width: 100%; height: 100%; object-fit: contain; }
         .status { color: var(--muted); font-size: 14px; }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--text);
+            font-size: 13px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+        .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+        .list { display: grid; gap: 8px; }
+        .item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #1f2937;
+            display: grid;
+            gap: 4px;
+        }
+        .item strong { color: var(--text); }
+        .item small { color: var(--muted); }
+        .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .heatmap { overflow: auto; max-height: 540px; border: 1px solid #1f2937; border-radius: 10px; padding: 8px; }
+        .heatmap table { border-collapse: collapse; width: 100%; min-width: 640px; }
+        .heatmap th, .heatmap td { border: 1px solid #1f2937; padding: 6px 8px; text-align: center; font-size: 12px; }
+        .heatmap th { position: sticky; top: 0; background: #0f172a; z-index: 2; }
+        .heatmap .row-header { position: sticky; left: 0; background: #0f172a; z-index: 1; }
+        .heatmap .cell { color: #0f172a; font-weight: 600; }
+        .heatmap-wrap { margin-top: 16px; }
     </style>
 </head>
 <body>
@@ -169,6 +201,98 @@
                 </div>
             </div>
         </section>
+
+        <section class="panel">
+            <h3 style="margin:0;">Heladerías cercanas</h3>
+            <p class="muted" style="margin:0;">Usa los mismos parámetros de ubicación (ciudad o coordenadas + radio) y trae amenity=ice_cream como puntos de interés.</p>
+            <button id="heladerias-btn" type="button">Listar heladerías</button>
+            <div id="heladerias-status" class="status"></div>
+        </section>
+
+        <section class="grid">
+            <div class="card">
+                <h3>Listado</h3>
+                <div id="heladerias-list" class="list muted">Todavia no buscaste heladerías.</div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h3 style="margin:0;">Ruta heladerías (ACO tour)</h3>
+            <p class="muted" style="margin:0;">Calcula la ruta óptima para visitar todas las heladerías encontradas en una sola pasada (distancia mínima).</p>
+            <form id="aco-tour-form">
+                <div class="row">
+                    <div>
+                        <label for="tour_origin_latitude">Latitud origen</label>
+                        <input id="tour_origin_latitude" name="origin_latitude" type="number" step="any" placeholder="-32.889" required>
+                    </div>
+                    <div>
+                        <label for="tour_origin_longitude">Longitud origen</label>
+                        <input id="tour_origin_longitude" name="origin_longitude" type="number" step="any" placeholder="-68.845" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label for="tour_weight">Peso</label>
+                        <select id="tour_weight" name="weight">
+                            <option value="length">length (metros)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="tour_n_ants">Hormigas</label>
+                        <input id="tour_n_ants" name="n_ants" type="number" min="1" value="30">
+                    </div>
+                    <div>
+                        <label for="tour_n_iters">Iteraciones</label>
+                        <input id="tour_n_iters" name="n_iters" type="number" min="1" value="80">
+                    </div>
+                    <div>
+                        <label for="tour_alpha">Alpha (feromona)</label>
+                        <input id="tour_alpha" name="alpha" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_beta">Beta (heurística)</label>
+                        <input id="tour_beta" name="beta" type="number" step="0.1" value="2.0">
+                    </div>
+                    <div>
+                        <label for="tour_rho">Evaporación (rho)</label>
+                        <input id="tour_rho" name="rho" type="number" step="0.05" value="0.5">
+                    </div>
+                    <div>
+                        <label for="tour_q">Q (depósito)</label>
+                        <input id="tour_q" name="q" type="number" step="1" value="100">
+                    </div>
+                </div>
+                <button type="submit">Calcular tour heladerías (ACO)</button>
+                <div id="aco-tour-status" class="status"></div>
+            </form>
+        </section>
+
+        <section class="grid">
+            <div class="card">
+                <h3>Grafo base </h3>
+                <div class="map-frame sm">
+                    <img id="aco-tour-base-image" alt="Grafo base heladerías" />
+                </div>
+            </div>
+            <div class="card">
+                <h3>Ruta tour</h3>
+                <div class="map-frame sm">
+                    <img id="aco-tour-image" alt="Ruta heladerías ACO" />
+                </div>
+                <div id="aco-tour-info" style="margin-top:10px;"></div>
+            </div>
+            <div class="card">
+                <h3>Historial tour</h3>
+                <div id="aco-tour-history" class="muted">Todavia no corriste el tour.</div>
+            </div>
+        </section>
+
+        <section class="panel heatmap-wrap">
+            <h3 style="margin:0;">Matriz de distancias precomputadas</h3>
+            <p class="muted" style="margin:4px 0 8px 0;">Valores en metros con labels de origen y heladerías.</p>
+            <div id="aco-tour-heatmap" class="heatmap muted">Todavía no se calcula la matriz.</div>
+        </section>
+
     </div>
 
     <script>
@@ -180,6 +304,9 @@
         const cityInput = document.getElementById("city");
         const latInput = document.getElementById("latitude");
         const lonInput = document.getElementById("longitude");
+        const heladeriasBtn = document.getElementById("heladerias-btn");
+        const heladeriasStatus = document.getElementById("heladerias-status");
+        const heladeriasList = document.getElementById("heladerias-list");
 
         function toggleInputs() {
             const byCity = document.querySelector("input[name='mode']:checked").value === "city";
@@ -214,13 +341,147 @@
                     <div class="stat"><span>Longitud promedio (m)</span><strong>${data.stats.avg_length_m.toFixed(2)}</strong></div>
                     <div class="stat"><span>Grado promedio</span><strong>${data.stats.avg_degree.toFixed(2)}</strong></div>
                     <div class="stat"><span>Densidad</span><strong>${data.stats.density.toFixed(4)}</strong></div>
-                    <div class="stat"><span>Coord. completas</span><strong>${data.stats.nodes_with_coords ? "Si" : "No"}</strong></div>
+                <div class="stat"><span>Coord. completas</span><strong>${data.stats.nodes_with_coords ? "Si" : "No"}</strong></div>
                 `;
                 statusEl.textContent = "Listo. Si repetis la consulta, usa el cache local de OSMnx.";
             } catch (err) {
                 statusEl.textContent = err.message;
             }
         });
+
+        heladeriasBtn.addEventListener("click", async () => {
+            heladeriasStatus.textContent = "Buscando heladerías...";
+            heladeriasList.textContent = "";
+            const baseData = new FormData(form);
+            try {
+                const response = await fetch("/heladerias", { method: "POST", body: baseData });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Error al consultar heladerías");
+                }
+                const data = await response.json();
+                heladeriasStatus.textContent = `Encontradas: ${data.count}`;
+                if (data.count === 0) {
+                    heladeriasList.textContent = "No se encontraron heladerías en ese radio.";
+                    return;
+                }
+                heladeriasList.innerHTML = data.places.map(p => `
+                    <div class="item">
+                        <strong>${p.name || "Sin nombre"}</strong>
+                        <small>Lat: ${p.lat?.toFixed ? p.lat.toFixed(5) : p.lat} | Lon: ${p.lon?.toFixed ? p.lon.toFixed(5) : p.lon}</small>
+                        <small>${p["addr:street"] || ""} ${p["addr:housenumber"] || ""}</small>
+                    </div>
+                `).join("");
+            } catch (err) {
+                heladeriasStatus.textContent = err.message;
+            }
+        });
+
+        // ----------- ACO Tour (heladerías) -----------
+        const acoTourForm = document.getElementById("aco-tour-form");
+        const acoTourStatus = document.getElementById("aco-tour-status");
+        const acoTourInfo = document.getElementById("aco-tour-info");
+        const acoTourHistory = document.getElementById("aco-tour-history");
+        const acoTourBaseImg = document.getElementById("aco-tour-base-image");
+        const acoTourImg = document.getElementById("aco-tour-image");
+        const acoTourHeatmap = document.getElementById("aco-tour-heatmap");
+
+        acoTourForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            acoTourStatus.textContent = "Calculando tour...";
+            acoTourInfo.textContent = "";
+            acoTourHistory.textContent = "";
+            acoTourBaseImg.src = "";
+            acoTourImg.src = "";
+        acoTourHeatmap.textContent = "Cargando matriz...";
+
+            const baseData = new FormData(form);
+            const tourData = new FormData(acoTourForm);
+            // Parámetros ACO del tour (específicos a este formulario)
+            tourData.set("n_ants", document.getElementById("tour_n_ants").value);
+            tourData.set("n_iters", document.getElementById("tour_n_iters").value);
+            tourData.set("alpha", document.getElementById("tour_alpha").value);
+            tourData.set("beta", document.getElementById("tour_beta").value);
+            tourData.set("rho", document.getElementById("tour_rho").value);
+            tourData.set("q", document.getElementById("tour_q").value);
+            tourData.set("weight", document.getElementById("tour_weight").value);
+
+            for (const [k, v] of tourData.entries()) {
+                baseData.append(k, v);
+            }
+
+            try {
+                const response = await fetch("/aco-heladerias", { method: "POST", body: baseData });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Error al calcular el tour ACO");
+                }
+                const data = await response.json();
+                acoTourBaseImg.src = data.base_image;
+                acoTourImg.src = data.image;
+                acoTourInfo.innerHTML = `
+                    <div class="flex">
+                        <div class="pill">Costo total: ${data.cost.toFixed(2)} (${baseData.get("weight")})</div>
+                        <div class="pill">Heladerías: ${data.count_targets}</div>
+                        <div class="pill">Nodos en ruta: ${data.path.length}</div>
+                    </div>
+                    <div class="muted" style="margin-top:8px;">Orden: ${data.order_labels.join(" → ")}</div>
+                `;
+                acoTourHistory.textContent = "Historial de mejor costo: " + data.history.map(v => v.toFixed(2)).join(" → ");
+                acoTourStatus.textContent = "Listo. Ruta calculada para todas las heladerías.";
+
+                // Heatmap de distancias
+                const pairwise = data.pairwise || [];
+                const labelMap = data.label_map || {};
+                if (!pairwise.length) {
+                    acoTourHeatmap.textContent = "No hay matriz de distancias.";
+                } else {
+                    const nodes = Array.from(new Set(pairwise.flatMap(p => [p.from, p.to]))).sort();
+                    const distMap = {};
+                    let min = Infinity;
+                    let max = -Infinity;
+                    pairwise.forEach(p => {
+                        const key = `${p.from}::${p.to}`;
+                        distMap[key] = p.distance;
+                        if (p.distance < min) min = p.distance;
+                        if (p.distance > max) max = p.distance;
+                    });
+                    const span = Math.max(max - min, 1e-9);
+                    const colorFor = (d) => {
+                        const t = Math.min(Math.max((d - min) / span, 0), 1);
+                        const hue = 120 * (1 - t); // verde (bajo) -> rojo (alto)
+                        return `hsl(${hue}, 75%, 45%)`;
+                    };
+
+                    let html = "<table><thead><tr><th></th>";
+                    nodes.forEach(n => { html += `<th title="${n}">${labelMap[n] || n}</th>`; });
+                    html += "</tr></thead><tbody>";
+                    nodes.forEach(row => {
+                        const rowLabel = labelMap[row] || row;
+                        html += `<tr><th class="row-header" title="${row}">${rowLabel}</th>`;
+                        nodes.forEach(col => {
+                            if (row === col) {
+                                html += `<td class="cell" style="background:#0f172a; color:#e2e8f0;">–</td>`;
+                            } else {
+                                const d = distMap[`${row}::${col}`];
+                                if (d === undefined) {
+                                    html += `<td class="cell" style="background:#0f172a; color:#e2e8f0;">∞</td>`;
+                                } else {
+                                    const bg = colorFor(d);
+                                    html += `<td class="cell" style="background:${bg};">${d.toFixed(1)}</td>`;
+                                }
+                            }
+                        });
+                        html += "</tr>";
+                    });
+                    html += "</tbody></table>";
+                    acoTourHeatmap.innerHTML = html;
+                }
+            } catch (err) {
+                acoTourStatus.textContent = err.message;
+            }
+        });
+
     </script>
 </body>
 </html>
