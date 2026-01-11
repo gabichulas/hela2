@@ -203,6 +203,41 @@
         </section>
 
         <section class="panel">
+            <h3 style="margin:0;">Centros de distribución</h3>
+            <p class="muted" style="margin:0;">Gestiona los centros de distribución guardados en la base de datos.</p>
+            <form id="centros-form">
+                <div class="fields">
+                    <div>
+                        <label for="centro_name">Nombre del centro</label>
+                        <input id="centro_name" name="name" placeholder="Ej: Centro Principal" required>
+                    </div>
+                    <div>
+                        <label for="centro_lat">Latitud</label>
+                        <input id="centro_lat" name="lat" type="number" step="any" placeholder="-32.889" required>
+                    </div>
+                    <div>
+                        <label for="centro_lon">Longitud</label>
+                        <input id="centro_lon" name="lon" type="number" step="any" placeholder="-68.845" required>
+                    </div>
+                    <div>
+                        <label for="centro_description">Descripción (opcional)</label>
+                        <input id="centro_description" name="description" placeholder="Descripción del centro">
+                    </div>
+                </div>
+                <button type="submit">Guardar centro</button>
+                <div id="centros-status" class="status"></div>
+            </form>
+        </section>
+
+        <section class="grid">
+            <div class="card">
+                <h3>Centros guardados</h3>
+                <button id="centros-refresh-btn" type="button" style="margin-bottom:10px;">Actualizar listado</button>
+                <div id="centros-list" class="list muted">Carga el listado de centros.</div>
+            </div>
+        </section>
+
+        <section class="panel">
             <h3 style="margin:0;">Heladerías cercanas</h3>
             <p class="muted" style="margin:0;">Usa los mismos parámetros de ubicación (ciudad o coordenadas + radio) y trae amenity=ice_cream como puntos de interés.</p>
             <button id="heladerias-btn" type="button">Listar heladerías</button>
@@ -221,6 +256,12 @@
             <p class="muted" style="margin:0;">Calcula la ruta óptima para visitar todas las heladerías encontradas en una sola pasada (distancia mínima).</p>
             <form id="aco-tour-form">
                 <div class="row">
+                    <div>
+                        <label for="tour_centro_select">Centro de distribución (opcional)</label>
+                        <select id="tour_centro_select">
+                            <option value="">-- Selecciona un centro o ingresa coordenadas --</option>
+                        </select>
+                    </div>
                     <div>
                         <label for="tour_origin_latitude">Latitud origen</label>
                         <input id="tour_origin_latitude" name="origin_latitude" type="number" step="any" placeholder="-32.889" required>
@@ -377,6 +418,73 @@
             }
         });
 
+        // ----------- Centros de distribución -----------
+        const centrosForm = document.getElementById("centros-form");
+        const centrosStatus = document.getElementById("centros-status");
+        const centrosList = document.getElementById("centros-list");
+        const centrosRefreshBtn = document.getElementById("centros-refresh-btn");
+
+        async function loadCentros() {
+            centrosList.textContent = "Cargando...";
+            try {
+                const response = await fetch("/centros");
+                if (!response.ok) {
+                    throw new Error("Error al cargar centros");
+                }
+                const centros = await response.json();
+                if (centros.length === 0) {
+                    centrosList.textContent = "No hay centros guardados.";
+                    return;
+                }
+                centrosList.innerHTML = centros.map(c => `
+                    <div class="item">
+                        <strong>${c.name}</strong>
+                        <small>ID: ${c.id} | Lat: ${c.lat.toFixed(5)} | Lon: ${c.lon.toFixed(5)}</small>
+                        ${c.description ? `<small style="color:#94a3b8;">${c.description}</small>` : ''}
+                    </div>
+                `).join("");
+            } catch (err) {
+                centrosList.innerHTML = `<span style="color:#ef4444;">${err.message}</span>`;
+            }
+        }
+
+        centrosForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            centrosStatus.textContent = "Guardando centro...";
+
+            const formData = new FormData(centrosForm);
+            const centro = {
+                name: formData.get("name"),
+                lat: parseFloat(formData.get("lat")),
+                lon: parseFloat(formData.get("lon")),
+                description: formData.get("description") || null
+            };
+
+            try {
+                const response = await fetch("/centros", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(centro)
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Error al guardar centro");
+                }
+                const saved = await response.json();
+                centrosStatus.textContent = `Centro guardado con ID: ${saved.id}`;
+                centrosForm.reset();
+                loadCentros(); // Recargar lista
+                loadCentrosForTour(); // Recargar selector del tour
+            } catch (err) {
+                centrosStatus.textContent = err.message;
+            }
+        });
+
+        centrosRefreshBtn.addEventListener("click", loadCentros);
+
+        // Cargar centros al iniciar
+        loadCentros();
+
         // ----------- ACO Tour (heladerías) -----------
         const acoTourForm = document.getElementById("aco-tour-form");
         const acoTourStatus = document.getElementById("aco-tour-status");
@@ -385,6 +493,40 @@
         const acoTourBaseImg = document.getElementById("aco-tour-base-image");
         const acoTourImg = document.getElementById("aco-tour-image");
         const acoTourHeatmap = document.getElementById("aco-tour-heatmap");
+        const tourCentroSelect = document.getElementById("tour_centro_select");
+        const tourOriginLat = document.getElementById("tour_origin_latitude");
+        const tourOriginLon = document.getElementById("tour_origin_longitude");
+
+        // Cargar centros en el selector del tour
+        async function loadCentrosForTour() {
+            try {
+                const response = await fetch("/centros");
+                if (!response.ok) return;
+                const centros = await response.json();
+                
+                tourCentroSelect.innerHTML = '<option value="">-- Selecciona un centro o ingresa coordenadas --</option>';
+                centros.forEach(c => {
+                    const option = document.createElement("option");
+                    option.value = JSON.stringify({ lat: c.lat, lon: c.lon, name: c.name });
+                    option.textContent = `${c.name} (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})`;
+                    tourCentroSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error("Error cargando centros para tour:", err);
+            }
+        }
+
+        // Cuando se selecciona un centro, rellenar coordenadas
+        tourCentroSelect.addEventListener("change", () => {
+            if (tourCentroSelect.value) {
+                const centro = JSON.parse(tourCentroSelect.value);
+                tourOriginLat.value = centro.lat;
+                tourOriginLon.value = centro.lon;
+            }
+        });
+
+        // Cargar centros para el tour al iniciar
+        loadCentrosForTour();
 
         acoTourForm.addEventListener("submit", async (event) => {
             event.preventDefault();

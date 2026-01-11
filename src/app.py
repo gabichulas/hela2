@@ -1,5 +1,7 @@
 import base64
 import math
+import os 
+from pathlib import Path
 from io import BytesIO
 from pathlib import Path
 from typing import Optional, List
@@ -10,6 +12,8 @@ import osmnx as ox
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from shapely.geometry import Point
+from sqlmodel import Session, create_engine, select, SQLModel
+from models import DistributionCenter
 
 from utils.graph_utils import (
     get_graph_by_city,
@@ -27,6 +31,12 @@ app = FastAPI(
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
+data_dir = Path(__file__).parent.parent / "data"
+data_dir.mkdir(exist_ok=True)
+
+db_file = data_dir / "centros.db"
+engine = create_engine(f"sqlite:///{db_file}")
+SQLModel.metadata.create_all(engine)
 
 def render_graph_image(G) -> str:
     """
@@ -77,7 +87,8 @@ def render_graph_with_poi(G, poi_nodes: Optional[list] = None) -> str:
             xs.append(x)
             ys.append(y)
         if xs:
-            ax.scatter(xs, ys, c="red", s=18, zorder=5, edgecolors="white", linewidths=0.5)
+            # Heladerías más grandes y visibles con borde blanco grueso
+            ax.scatter(xs, ys, c="#ef4444", s=60, zorder=8, edgecolors="white", linewidths=1.5, alpha=0.95)
 
     buffer = BytesIO()
     fig.savefig(buffer, format="png", bbox_inches="tight")
@@ -111,8 +122,8 @@ def render_graph_route_image(G, route_nodes, poi_nodes: Optional[list] = None) -
             xs, ys = zip(*coords)
             ax.plot(xs, ys, color="#f97316", linewidth=3, zorder=6, alpha=0.95)
             # Destacar inicio y fin
-            ax.scatter([xs[0]], [ys[0]], c="#22c55e", s=40, zorder=7, edgecolors="white", linewidths=0.8)
-            ax.scatter([xs[-1]], [ys[-1]], c="#f59e0b", s=40, zorder=7, edgecolors="white", linewidths=0.8)
+            ax.scatter([xs[0]], [ys[0]], c="#22c55e", s=80, zorder=8, edgecolors="white", linewidths=1.5)
+            ax.scatter([xs[-1]], [ys[-1]], c="#ae00ff", s=80, zorder=8, edgecolors="white", linewidths=1.5)
             # nodos de la ruta
             ax.scatter(xs, ys, c="#fef08a", s=8, zorder=6, edgecolors="none", alpha=0.8)
 
@@ -129,7 +140,8 @@ def render_graph_route_image(G, route_nodes, poi_nodes: Optional[list] = None) -
             xs.append(x)
             ys.append(y)
         if xs:
-            ax.scatter(xs, ys, c="red", s=18, zorder=5, edgecolors="white", linewidths=0.5)
+            # Heladerías más grandes y visibles con borde blanco grueso
+            ax.scatter(xs, ys, c="#ef4444", s=60, zorder=8, edgecolors="white", linewidths=1.5, alpha=0.95)
 
     buffer = BytesIO()
     fig.savefig(buffer, format="png", bbox_inches="tight")
@@ -201,6 +213,19 @@ async def graph(
 
     return {"stats": stats, "image": image}
 
+
+@app.post("/centros")
+async def crear_centro(centro: DistributionCenter):
+    with Session(engine) as session:
+        session.add(centro)
+        session.commit()
+        session.refresh(centro)
+        return centro
+    
+@app.get("/centros")
+async def listar_centros():
+    with Session(engine) as session:
+        return session.exec(select(DistributionCenter)).all()
 
 @app.post("/heladerias")
 async def heladerias(
