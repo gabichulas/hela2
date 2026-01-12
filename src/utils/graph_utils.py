@@ -8,6 +8,18 @@ import random
 from math import radians, sin, cos, sqrt, atan2
 
 
+SPEED_DEFAULTS = {
+    'motorway': 120,
+    'trunk': 100,
+    'primary': 80,
+    'secondary': 60,
+    'tertiary': 50,
+    'residential': 30,
+    'service': 20,
+    'living_street': 20,
+    'unclassified': 40,
+}
+
 def get_graph_by_city(
     city: str,
     radius: int,
@@ -34,6 +46,20 @@ def get_graph_by_city(
         network_type=network_type,
         simplify=simplify
     )
+    
+    for u, v, k, data in G.edges(keys=True, data=True):
+        length = data.get('length', 0)
+        maxspeed = data.get('maxspeed')
+        
+        if isinstance(maxspeed, list): maxspeed = maxspeed[0]
+        if maxspeed is None:
+            highway_type = data.get('highway', 'unclassified')
+            if isinstance(highway_type, list):
+                highway_type = highway_type[0]
+            maxspeed = SPEED_DEFAULTS.get(highway_type, 50)
+
+        street_time = length / (maxspeed / 3.6)
+        G[u][v][k]['street_time'] = street_time
     
     if use_cache:
         os.makedirs(cache_dir, exist_ok=True)
@@ -71,6 +97,21 @@ def get_graph_by_point(
         simplify=simplify
     )
     
+    for u, v, k, data in G.edges(keys=True, data=True):
+        length = data.get('length', 0)
+        maxspeed = data.get('maxspeed')
+        
+        if isinstance(maxspeed, list): maxspeed = maxspeed[0]
+        if maxspeed is None:
+            highway_type = data.get('highway', 'unclassified')
+            if isinstance(highway_type, list):
+                highway_type = highway_type[0]
+            maxspeed = SPEED_DEFAULTS.get(highway_type, 50)
+
+        street_time = length / (maxspeed / 3.6)
+        G[u][v][k]['street_time'] = street_time
+        
+        
     if use_cache:
         os.makedirs(cache_dir, exist_ok=True)
         with open(cache_path, 'wb') as f:
@@ -226,7 +267,7 @@ def aco_tour_through_nodes(
     dist: Dict[Tuple[Any, Any], float] = {}
     spaths: Dict[Tuple[Any, Any], List[Any]] = {}
     for i in nodes:
-        lengths, paths = nx.single_source_dijkstra(G, i, weight=weight)
+        lengths, paths = nx.single_source_dijkstra(G, i, weight=weight) #TODO: Add weight to streets
         for j in nodes:
             if i == j:
                 continue
