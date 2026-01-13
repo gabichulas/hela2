@@ -28,7 +28,6 @@ def get_graph_by_city(
     use_cache: bool = True,
     cache_dir: str = "cache"
 ) -> nx.MultiDiGraph:
-    
     cache_name = f"{city.replace(',', '').replace(' ', '_')}_{radius}m_{network_type}.pkl"
     cache_path = os.path.join(cache_dir, cache_name)
     
@@ -79,7 +78,6 @@ def get_graph_by_point(
     use_cache: bool = True,
     cache_dir: str = "cache"
 ) -> nx.MultiDiGraph:
-
     cache_name = f"point_{latitude}_{longitude}_{radius}m_{network_type}.pkl"
     cache_path = os.path.join(cache_dir, cache_name)
     
@@ -122,7 +120,6 @@ def get_graph_by_point(
 
 
 def get_graph_stats(G: nx.MultiDiGraph) -> Dict[str, Any]:
-    
     stats = ox.basic_stats(G)
     
     return {
@@ -196,10 +193,6 @@ def get_ice_cream_places(
     radius: int = 1000,
     cache_dir: str = "cache",
 ) -> pd.DataFrame:
-    """
-    Devuelve un DataFrame con heladerías (amenity=ice_cream) en un radio dado.
-    Si se indica city, se geocodifica; si no, usa lat/lon.
-    """
     if city:
         lat, lon = ox.geocode(city)
     else:
@@ -223,7 +216,7 @@ def get_ice_cream_places(
         if col not in df.columns:
             df[col] = None
     df = df[cols]
-    df = df.where(pd.notnull(df), None)  # Reemplaza NaN por None para JSON
+    df = df.where(pd.notnull(df), None)
     return df
 
 
@@ -232,30 +225,19 @@ def aco_tour_through_nodes(
     start: Any,
     targets: List[Any],
     weight: str = "street_time",
-    start_time: int = 10*60, # 10 AM
+    start_time: int = 10*60,
     time_windows: Optional[Dict[Any, Tuple[int, int]]] = None,
+    unload_time: int = 10,
     n_ants: int = 30,
     n_iters: int = 80,
     alpha: float = 1.0,
     beta: float = 2.0,
-    gamma: float = 0.7, # Urgency factor weight
+    gamma: float = 0.7,
     rho: float = 0.5,
     q: float = 100.0,
     tau_bounds: Tuple[float, float] = (1e-4, 1.0),
     seed: Optional[int] = None,
 ) -> Tuple[Optional[List[Any]], float, List[float], List[Any], List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """
-    ACO para recorrer todos los nodos objetivo (heladerías) en una sola pasada.
-    Se modela como TSP sobre el conjunto (start + targets) usando distancias de camino más corto.
-
-    Returns:
-        tour_order: orden de nodos visitados (start + heladerías) en grafo original.
-        tour_cost: costo total (suma de distancias entre nodos consecutivos).
-        history: mejor costo por iteración.
-        full_path: secuencia expandida de nodos del grafo para dibujar la ruta completa.
-        pairwise: lista de distancias precomputadas entre pares.
-        tour_legs: lista de segmentos usados por el tour con su camino detallado.
-    """
     if start not in G:
         raise ValueError("El nodo de inicio no existe en el grafo")
     unique_targets = [t for t in dict.fromkeys(targets) if t != start]
@@ -270,7 +252,7 @@ def aco_tour_through_nodes(
     dist: Dict[Tuple[Any, Any], float] = {}
     spaths: Dict[Tuple[Any, Any], List[Any]] = {}
     for i in nodes:
-        lengths, paths = nx.single_source_dijkstra(G, i, weight=weight) #TODO: Add weight to streets
+        lengths, paths = nx.single_source_dijkstra(G, i, weight=weight)
         for j in nodes:
             if i == j:
                 continue
@@ -285,21 +267,25 @@ def aco_tour_through_nodes(
     best_cost = float("inf")
     history: List[float] = []
 
-    def build_tour(start_time) -> Tuple[List[Any], float]: # TODO: Implement time windows on frontend
+    def build_tour(start_time) -> Tuple[List[Any], float, List[Dict]]:
         order = [start]
         unvisited = set(unique_targets)
         total_cost = 0.0
         current_time = start_time
+        arrival_log = []
         while unvisited:
             current = order[-1]
             choices = []
             for cand in unvisited:
                 d = dist[(current, cand)]
                 
-                if weight == "street_time": arrival_time = current_time + ((d/60)*2) # dist = seconds
+                if weight == "street_time": 
+                    travel_time_min = (d / 60) * 15 # Aproximate 
                 else: 
                     AVG_SPEED_MS = 30 / 3.6
-                    arrival_time = current_time + (d / AVG_SPEED_MS) / 60
+                    travel_time_min = (d / AVG_SPEED_MS) / 60
+                
+                arrival_time = current_time + travel_time_min
                     
                 if time_windows and cand in time_windows:
                     earliest, latest = time_windows[cand]    
@@ -321,7 +307,7 @@ def aco_tour_through_nodes(
                 pher = tau[(current, cand)]
                 heuristic = 1.0 / d if d > 0 else 1e6
                 score = (pher ** alpha) * (heuristic ** beta) * (urgency_factor ** gamma)
-                choices.append((score, cand, d))
+                choices.append((score, cand, d, travel_time_min, arrival_time))
             total_score = sum(c[0] for c in choices)
             if total_score <= 0:
                 chosen = rng.choice(choices)
@@ -334,29 +320,51 @@ def aco_tour_through_nodes(
                     if accum >= r:
                         chosen = item
                         break
-            _, nxt, d = chosen
+            _, nxt, d, travel_time_min, arrival_time = chosen
             order.append(nxt)
             unvisited.remove(nxt)
             total_cost += d
             
-            if weight == "street_time": current_time += (d / 60) * 2
-            else: current_time += (d / (30 / 3.6)) / 60
-        # Cierre del circuito explícito: volver al inicio
+            # Usar el arrival_time ya calculado + tiempo de descarga
+            current_time = arrival_time + unload_time
+            
+            # Registrar llegada (antes de agregar tiempo de descarga)
+            window_status = "N/A"
+            window_info = None
+            if time_windows and nxt in time_windows:
+                earliest, latest = time_windows[nxt]
+                window_info = (earliest, latest)
+                if current_time < earliest:
+                    window_status = "TEMPRANO"
+                elif current_time <= latest:
+                    window_status = "A TIEMPO"
+                else:
+                    window_status = "TARDÍO"
+            
+            arrival_log.append({
+                "node": nxt,
+                "arrival_minutes": current_time,
+                "window": window_info,
+                "status": window_status,
+            })
         order.append(start)
         total_cost += dist[(order[-2], start)]
-        return order, total_cost
+        return order, total_cost, arrival_log
 
+    best_arrival_log = []
+    
     for _ in range(n_iters):
         iter_best_order = None
         iter_best_cost = float("inf")
+        iter_best_log = []
 
         for _ in range(n_ants):
-            order, cost = build_tour(start_time=start_time)
+            order, cost, log = build_tour(start_time=start_time)
             if cost < iter_best_cost:
                 iter_best_cost = cost
                 iter_best_order = order
+                iter_best_log = log
 
-        # Evaporación
         for key in tau:
             tau[key] = max(tau_min, (1 - rho) * tau[key])
 
@@ -368,11 +376,12 @@ def aco_tour_through_nodes(
             if iter_best_cost < best_cost:
                 best_cost = iter_best_cost
                 best_order = iter_best_order
+                best_arrival_log = iter_best_log
 
         history.append(best_cost)
 
     if best_order is None:
-        return None, float("inf"), history, [], [], []
+        return None, float("inf"), history, [], [], [], []
 
     # Reconstruir path completo en el grafo original concatenando caminos más cortos
     full_path: List[Any] = []
@@ -380,16 +389,16 @@ def aco_tour_through_nodes(
     for a, b in zip(best_order, best_order[1:]):
         leg = spaths[(a, b)]
         if full_path:
-            leg = leg[1:]  # evitar repetir nodo de unión
+            leg = leg[1:]
         full_path.extend(leg)
         tour_legs.append({"from": a, "to": b, "distance": dist[(a, b)], "path": spaths[(a, b)]})
 
     pairwise = [{"from": a, "to": b, "distance": d} for (a, b), d in dist.items()]
 
-    return best_order, best_cost, history, full_path, pairwise, tour_legs
+    return best_order, best_cost, history, full_path, pairwise, tour_legs, best_arrival_log
+
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    
-    R = 6371000  # Earth radius in meters
+    R = 6371000
     
     lat1_rad, lon1_rad = radians(lat1), radians(lon1)
     lat2_rad, lon2_rad = radians(lat2), radians(lon2)
@@ -457,9 +466,8 @@ def insert_point_between_nodes(
     if new_type:
         new_node_attrs['type'] = new_type
         
-    G.add_node(new_point_id, **new_node_attrs) # TODO: check if new_point_id already exists
+    G.add_node(new_point_id, **new_node_attrs)
     
-    # Create first edge: from_id -> new_point_id
     first_edge_attrs = edge_data.copy()
     first_edge_attrs['length'] = dist_from_to_new
     
@@ -471,7 +479,6 @@ def insert_point_between_nodes(
     
     G.add_edge(from_id, new_point_id, **first_edge_attrs)
     
-    # Create second edge: new_point_id -> to_id
     second_edge_attrs = edge_data.copy()
     second_edge_attrs['length'] = dist_new_to_to
     
@@ -513,7 +520,6 @@ def find_nearest_edge(
         dist_to_u = haversine_distance(lat, lon, u_lat, u_lon)
         dist_to_v = haversine_distance(lat, lon, v_lat, v_lon)
         
-        # Approximate distance to edge
         edge_dist = min(dist_to_u, dist_to_v)
         
         if edge_dist < min_dist:

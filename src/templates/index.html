@@ -134,6 +134,15 @@
         .heatmap .row-header { position: sticky; left: 0; background: #0f172a; z-index: 1; }
         .heatmap .cell { color: #0f172a; font-weight: 600; }
         .heatmap-wrap { margin-top: 16px; }
+        .log-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .log-table th, .log-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #1f2937; }
+        .log-table th { background: #0b1220; font-size: 13px; color: var(--muted); }
+        .log-table td { font-size: 14px; }
+        .log-status { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        .log-status.on-time { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .log-status.early { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .log-status.late { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .log-status.na { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
     </style>
 </head>
 <body>
@@ -303,6 +312,24 @@
                         <label for="tour_q">Q (depósito)</label>
                         <input id="tour_q" name="q" type="number" step="1" value="100">
                     </div>
+                    <div>
+                        <label for="tour_start_time">Hora de inicio</label>
+                        <input id="tour_start_time" name="start_time" type="time" value="08:00">
+                    </div>
+                    <div>
+                        <label for="tour_gamma">Gamma (urgencia)</label>
+                        <input id="tour_gamma" name="gamma" type="number" step="0.1" value="0.7">
+                    </div>
+                    <div>
+                        <label for="tour_unload_time">Tiempo descarga (min)</label>
+                        <input id="tour_unload_time" name="unload_time" type="number" min="0" value="10">
+                    </div>
+                </div>
+                <div style="margin-top: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="tour_generate_windows" name="generate_windows" style="width: auto;">
+                        <span>Generar ventanas de tiempo aleatorias para testing</span>
+                    </label>
                 </div>
                 <button type="submit">Calcular tour heladerías (ACO)</button>
                 <div id="aco-tour-status" class="status"></div>
@@ -327,6 +354,12 @@
                 <h3>Historial tour</h3>
                 <div id="aco-tour-history" class="muted">Todavia no corriste el tour.</div>
             </div>
+        </section>
+
+        <section class="panel">
+            <h3 style="margin:0;">Log de llegadas</h3>
+            <p class="muted" style="margin:0 0 10px 0;">Tiempos de llegada a cada heladería y estado de ventanas de tiempo.</p>
+            <div id="aco-arrival-log" class="muted">Ejecuta el tour para ver el log de llegadas.</div>
         </section>
 
         <section class="panel heatmap-wrap">
@@ -494,6 +527,7 @@
         const acoTourBaseImg = document.getElementById("aco-tour-base-image");
         const acoTourImg = document.getElementById("aco-tour-image");
         const acoTourHeatmap = document.getElementById("aco-tour-heatmap");
+        const acoArrivalLog = document.getElementById("aco-arrival-log");
         const tourCentroSelect = document.getElementById("tour_centro_select");
         const tourOriginLat = document.getElementById("tour_origin_latitude");
         const tourOriginLon = document.getElementById("tour_origin_longitude");
@@ -536,7 +570,8 @@
             acoTourHistory.textContent = "";
             acoTourBaseImg.src = "";
             acoTourImg.src = "";
-        acoTourHeatmap.textContent = "Cargando matriz...";
+            acoTourHeatmap.textContent = "Cargando matriz...";
+            acoArrivalLog.textContent = "Cargando log...";
 
             const baseData = new FormData(form);
             const tourData = new FormData(acoTourForm);
@@ -548,6 +583,17 @@
             tourData.set("rho", document.getElementById("tour_rho").value);
             tourData.set("q", document.getElementById("tour_q").value);
             tourData.set("weight", document.getElementById("tour_weight").value);
+            tourData.set("gamma", document.getElementById("tour_gamma").value);
+            tourData.set("unload_time", document.getElementById("tour_unload_time").value);
+            tourData.set("generate_windows", document.getElementById("tour_generate_windows").checked ? "true" : "false");
+            
+            // Convertir hora de inicio a minutos desde medianoche
+            const startTimeInput = document.getElementById("tour_start_time").value;
+            if (startTimeInput) {
+                const [hours, minutes] = startTimeInput.split(":").map(Number);
+                const startTimeMinutes = hours * 60 + minutes;
+                tourData.set("start_time", startTimeMinutes);
+            }
 
             for (const [k, v] of tourData.entries()) {
                 baseData.append(k, v);
@@ -619,6 +665,39 @@
                     });
                     html += "</tbody></table>";
                     acoTourHeatmap.innerHTML = html;
+                }
+
+                // Log de llegadas
+                const arrivalLog = data.arrival_log || [];
+                if (arrivalLog.length === 0) {
+                    acoArrivalLog.textContent = "No hay información de llegadas.";
+                } else {
+                    let logHtml = '<table class="log-table"><thead><tr>';
+                    logHtml += '<th>#</th><th>Heladería</th><th>Llegada</th>';
+                    if (data.time_windows_enabled) {
+                        logHtml += '<th>Ventana</th><th>Estado</th>';
+                    }
+                    logHtml += '</tr></thead><tbody>';
+                    
+                    arrivalLog.forEach(entry => {
+                        const statusClass = 
+                            entry.status === "A TIEMPO" ? "on-time" :
+                            entry.status === "TEMPRANO" ? "early" :
+                            entry.status === "TARDÍO" ? "late" : "na";
+                        
+                        logHtml += '<tr>';
+                        logHtml += `<td>${entry.sequence}</td>`;
+                        logHtml += `<td>${entry.label}</td>`;
+                        logHtml += `<td><strong>${entry.arrival_time}</strong></td>`;
+                        if (data.time_windows_enabled) {
+                            logHtml += `<td>${entry.window}</td>`;
+                            logHtml += `<td><span class="log-status ${statusClass}">${entry.status}</span></td>`;
+                        }
+                        logHtml += '</tr>';
+                    });
+                    
+                    logHtml += '</tbody></table>';
+                    acoArrivalLog.innerHTML = logHtml;
                 }
             } catch (err) {
                 acoTourStatus.textContent = err.message;
