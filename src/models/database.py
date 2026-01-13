@@ -7,4 +7,3 @@ class DistributionCenter(SQLModel, table=True):
     lat: float
     lon: float
     description: Optional[str] = None
-    
