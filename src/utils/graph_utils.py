@@ -231,11 +231,14 @@ def aco_tour_through_nodes(
     G: nx.MultiDiGraph,
     start: Any,
     targets: List[Any],
-    weight: str = "length",
+    weight: str = "street_time",
+    start_time: int = 10*60, # 10 AM
+    time_windows: Optional[Dict[Any, Tuple[int, int]]] = None,
     n_ants: int = 30,
     n_iters: int = 80,
     alpha: float = 1.0,
     beta: float = 2.0,
+    gamma: float = 0.7, # Urgency factor weight
     rho: float = 0.5,
     q: float = 100.0,
     tau_bounds: Tuple[float, float] = (1e-4, 1.0),
@@ -282,18 +285,42 @@ def aco_tour_through_nodes(
     best_cost = float("inf")
     history: List[float] = []
 
-    def build_tour() -> Tuple[List[Any], float]:
+    def build_tour(start_time) -> Tuple[List[Any], float]: # TODO: Implement time windows on frontend
         order = [start]
         unvisited = set(unique_targets)
         total_cost = 0.0
+        current_time = start_time
         while unvisited:
             current = order[-1]
             choices = []
             for cand in unvisited:
                 d = dist[(current, cand)]
+                
+                if weight == "street_time": arrival_time = current_time + ((d/60)*2) # dist = seconds
+                else: 
+                    AVG_SPEED_MS = 30 / 3.6
+                    arrival_time = current_time + (d / AVG_SPEED_MS) / 60
+                    
+                if time_windows and cand in time_windows:
+                    earliest, latest = time_windows[cand]    
+                    if arrival_time < earliest:
+                        urgency_factor = 0.9
+                    elif arrival_time <= latest:
+                        slack = latest - arrival_time
+                        max_slack  = latest - earliest
+                        normalized_slack = slack / max_slack if max_slack > 0 else 0
+                        urgency_factor = 2.0 - 1.0 * normalized_slack
+                    else:
+                        delay = arrival_time - latest
+                        max_acceptable_delay = 30
+                        penalty = min(delay / max_acceptable_delay, 1.0)
+                        
+                        urgency_factor = 0.5 - 0.3 * penalty
+                else: urgency_factor = 1.0
+                        
                 pher = tau[(current, cand)]
                 heuristic = 1.0 / d if d > 0 else 1e6
-                score = (pher ** alpha) * (heuristic ** beta)
+                score = (pher ** alpha) * (heuristic ** beta) * (urgency_factor ** gamma)
                 choices.append((score, cand, d))
             total_score = sum(c[0] for c in choices)
             if total_score <= 0:
@@ -311,6 +338,9 @@ def aco_tour_through_nodes(
             order.append(nxt)
             unvisited.remove(nxt)
             total_cost += d
+            
+            if weight == "street_time": current_time += (d / 60) * 2
+            else: current_time += (d / (30 / 3.6)) / 60
         # Cierre del circuito explícito: volver al inicio
         order.append(start)
         total_cost += dist[(order[-2], start)]
@@ -321,7 +351,7 @@ def aco_tour_through_nodes(
         iter_best_cost = float("inf")
 
         for _ in range(n_ants):
-            order, cost = build_tour()
+            order, cost = build_tour(start_time=start_time)
             if cost < iter_best_cost:
                 iter_best_cost = cost
                 iter_best_order = order
