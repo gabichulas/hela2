@@ -325,6 +325,40 @@
                         <input id="tour_unload_time" name="unload_time" type="number" min="0" value="10">
                     </div>
                 </div>
+                <div class="row">
+                    <div>
+                        <label for="tour_capacity">Capacidad vehiculo (opcional)</label>
+                        <input id="tour_capacity" name="capacity" type="number" min="0" step="0.1" placeholder="Ej: 50">
+                    </div>
+                    <div>
+                        <label for="tour_default_demand">Demanda por heladeria</label>
+                        <input id="tour_default_demand" name="default_demand" type="number" min="0" step="0.1" value="1">
+                    </div>
+                    <div>
+                        <label for="tour_max_operation_time">Tiempo max operacion (min)</label>
+                        <input id="tour_max_operation_time" name="max_operation_time" type="number" min="0" step="1" placeholder="Ej: 480">
+                    </div>
+                    <div>
+                        <label for="tour_penalty_alpha">Penalizacion ventana (alpha)</label>
+                        <input id="tour_penalty_alpha" name="penalty_alpha" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_penalty_beta">Penalizacion capacidad (beta)</label>
+                        <input id="tour_penalty_beta" name="penalty_beta" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_penalty_gamma">Penalizacion tiempo op (gamma)</label>
+                        <input id="tour_penalty_gamma" name="penalty_gamma" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_lambda_weight">Peso distancia (lambda)</label>
+                        <input id="tour_lambda_weight" name="lambda_weight" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_mu_weight">Peso penalizacion (mu)</label>
+                        <input id="tour_mu_weight" name="mu_weight" type="number" step="0.1" value="1.0">
+                    </div>
+                </div>
                 <div style="margin-top: 12px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <input type="checkbox" id="tour_generate_windows" name="generate_windows" style="width: auto;">
@@ -586,6 +620,21 @@
             tourData.set("gamma", document.getElementById("tour_gamma").value);
             tourData.set("unload_time", document.getElementById("tour_unload_time").value);
             tourData.set("generate_windows", document.getElementById("tour_generate_windows").checked ? "true" : "false");
+            tourData.set("default_demand", document.getElementById("tour_default_demand").value);
+            tourData.set("penalty_alpha", document.getElementById("tour_penalty_alpha").value);
+            tourData.set("penalty_beta", document.getElementById("tour_penalty_beta").value);
+            tourData.set("penalty_gamma", document.getElementById("tour_penalty_gamma").value);
+            tourData.set("lambda_weight", document.getElementById("tour_lambda_weight").value);
+            tourData.set("mu_weight", document.getElementById("tour_mu_weight").value);
+
+            const capacityValue = document.getElementById("tour_capacity").value;
+            if (capacityValue) {
+                tourData.set("capacity", capacityValue);
+            }
+            const maxOpValue = document.getElementById("tour_max_operation_time").value;
+            if (maxOpValue) {
+                tourData.set("max_operation_time", maxOpValue);
+            }
             
             // Convertir hora de inicio a minutos desde medianoche
             const startTimeInput = document.getElementById("tour_start_time").value;
@@ -608,15 +657,21 @@
                 const data = await response.json();
                 acoTourBaseImg.src = data.base_image;
                 acoTourImg.src = data.image;
+                const metrics = data.metrics || {};
+                const distanceTotal = metrics.distance_total ?? data.cost;
+                const objectiveCost = metrics.objective_cost ?? data.cost;
+                const penaltyTotal = metrics.penalty_total ?? 0;
                 acoTourInfo.innerHTML = `
                     <div class="flex">
-                        <div class="pill">Costo total: ${data.cost.toFixed(2)} (${baseData.get("weight")})</div>
+                        <div class="pill">Costo objetivo: ${objectiveCost.toFixed(2)}</div>
+                        <div class="pill">Distancia total: ${distanceTotal.toFixed(2)} (${baseData.get("weight")})</div>
+                        <div class="pill">Penalización total: ${penaltyTotal.toFixed(2)}</div>
                         <div class="pill">Heladerías: ${data.count_targets}</div>
                         <div class="pill">Nodos en ruta: ${data.path.length}</div>
                     </div>
                     <div class="muted" style="margin-top:8px;">Orden: ${data.order_labels.join(" → ")}</div>
                 `;
-                acoTourHistory.textContent = "Historial de mejor costo: " + data.history.map(v => v.toFixed(2)).join(" → ");
+                acoTourHistory.textContent = "Historial de mejor costo objetivo: " + data.history.map(v => v.toFixed(2)).join(" → ");
                 acoTourStatus.textContent = "Listo. Ruta calculada para todas las heladerías.";
 
                 // Heatmap de distancias

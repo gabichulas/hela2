@@ -139,6 +139,14 @@ async def aco_heladerias(
     gamma: float = Form(0.7),
     unload_time: int = Form(10),
     generate_windows: str = Form("false"),
+    capacity: Optional[float] = Form(None),
+    default_demand: float = Form(1.0),
+    max_operation_time: Optional[float] = Form(None),
+    penalty_alpha: float = Form(1.0),
+    penalty_beta: float = Form(1.0),
+    penalty_gamma: float = Form(1.0),
+    lambda_weight: float = Form(1.0),
+    mu_weight: float = Form(1.0),
 ):
     G = build_graph(mode, city, latitude, longitude, radius, network_type)
 
@@ -197,7 +205,7 @@ async def aco_heladerias(
             time_windows[node] = (earliest, latest)
 
     try:
-        order, cost, history, full_path, pairwise, tour_legs, arrival_log = aco_tour_through_nodes(
+        order, cost, history, full_path, pairwise, tour_legs, arrival_log, metrics = aco_tour_through_nodes(
             G,
             start=origin_node,
             targets=reachable_targets,
@@ -212,6 +220,11 @@ async def aco_heladerias(
             gamma=gamma,
             time_windows=time_windows,
             unload_time=unload_time,
+            default_demand=default_demand,
+            capacity=capacity,
+            max_operation_time=max_operation_time,
+            penalty_weights=(penalty_alpha, penalty_beta, penalty_gamma),
+            objective_weights=(lambda_weight, mu_weight),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -252,10 +265,24 @@ async def aco_heladerias(
     for i, entry in enumerate(arrival_log, start=1):
         node = entry["node"]
         arrival_minutes = entry["arrival_minutes"]
+        service_start_minutes = entry.get("service_start_minutes")
+        depart_minutes = entry.get("depart_minutes")
         
         hours = int(arrival_minutes // 60)
         minutes = int(arrival_minutes % 60)
         arrival_time_str = f"{hours:02d}:{minutes:02d}"
+
+        service_start_time_str = None
+        if service_start_minutes is not None:
+            s_hours = int(service_start_minutes // 60)
+            s_mins = int(service_start_minutes % 60)
+            service_start_time_str = f"{s_hours:02d}:{s_mins:02d}"
+
+        depart_time_str = None
+        if depart_minutes is not None:
+            d_hours = int(depart_minutes // 60)
+            d_mins = int(depart_minutes % 60)
+            depart_time_str = f"{d_hours:02d}:{d_mins:02d}"
         
         window_str = "N/A"
         if entry["window"] is not None:
@@ -270,6 +297,11 @@ async def aco_heladerias(
             "label": node_labels.get(node, f"Heladería {node}"),
             "arrival_time": arrival_time_str,
             "arrival_minutes": round(arrival_minutes, 2),
+            "service_start_time": service_start_time_str,
+            "service_start_minutes": round(service_start_minutes, 2) if service_start_minutes is not None else None,
+            "depart_time": depart_time_str,
+            "depart_minutes": round(depart_minutes, 2) if depart_minutes is not None else None,
+            "wait_minutes": round(entry.get("wait_minutes", 0.0), 2),
             "window": window_str,
             "status": entry["status"],
         })
@@ -291,4 +323,5 @@ async def aco_heladerias(
         "image": image,
         "arrival_log": formatted_log,
         "time_windows_enabled": generate_windows.lower() == "true",
+        "metrics": metrics,
     }

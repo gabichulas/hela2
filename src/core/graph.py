@@ -18,6 +18,22 @@ SPEED_DEFAULTS = {
     'unclassified': 40,
 }
 
+def _parse_maxspeed(value, default: float) -> float:
+    if value is None:
+        return default
+    if isinstance(value, list):
+        value = value[0]
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        cleaned = value.lower().replace("km/h", "").replace("kph", "").strip()
+        number = "".join(ch for ch in cleaned if (ch.isdigit() or ch == "."))
+        try:
+            return float(number)
+        except ValueError:
+            return default
+    return default
+
 
 def get_graph_by_city(
     city: str,
@@ -48,14 +64,11 @@ def get_graph_by_city(
     for u, v, k, data in G.edges(keys=True, data=True):
         length = data.get('length', 0)
         maxspeed = data.get('maxspeed')
-        
-        if isinstance(maxspeed, list):
-            maxspeed = maxspeed[0]
-        if maxspeed is None:
-            highway_type = data.get('highway', 'unclassified')
-            if isinstance(highway_type, list):
-                highway_type = highway_type[0]
-            maxspeed = SPEED_DEFAULTS.get(highway_type, 50)
+        highway_type = data.get('highway', 'unclassified')
+        if isinstance(highway_type, list):
+            highway_type = highway_type[0]
+        default_speed = SPEED_DEFAULTS.get(highway_type, 50)
+        maxspeed = _parse_maxspeed(maxspeed, default_speed)
 
         street_time = length / (maxspeed / 3.6)
         G[u][v][k]['street_time'] = street_time
@@ -98,14 +111,11 @@ def get_graph_by_point(
     for u, v, k, data in G.edges(keys=True, data=True):
         length = data.get('length', 0)
         maxspeed = data.get('maxspeed')
-        
-        if isinstance(maxspeed, list):
-            maxspeed = maxspeed[0]
-        if maxspeed is None:
-            highway_type = data.get('highway', 'unclassified')
-            if isinstance(highway_type, list):
-                highway_type = highway_type[0]
-            maxspeed = SPEED_DEFAULTS.get(highway_type, 50)
+        highway_type = data.get('highway', 'unclassified')
+        if isinstance(highway_type, list):
+            highway_type = highway_type[0]
+        default_speed = SPEED_DEFAULTS.get(highway_type, 50)
+        maxspeed = _parse_maxspeed(maxspeed, default_speed)
 
         street_time = length / (maxspeed / 3.6)
         G[u][v][k]['street_time'] = street_time
