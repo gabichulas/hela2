@@ -232,7 +232,7 @@ def aco_tour_through_nodes(
     n_iters: int = 80,
     alpha: float = 1.0,
     beta: float = 2.0,
-    gamma: float = 0.7,
+    gamma: float = 1.0,
     rho: float = 0.5,
     q: float = 100.0,
     tau_bounds: Tuple[float, float] = (1e-4, 1.0),
@@ -280,7 +280,7 @@ def aco_tour_through_nodes(
                 d = dist[(current, cand)]
                 
                 if weight == "street_time": 
-                    travel_time_min = (d / 60) * 15 # Aproximate 
+                    travel_time_min = (d / 60)
                 else: 
                     AVG_SPEED_MS = 30 / 3.6
                     travel_time_min = (d / AVG_SPEED_MS) / 60

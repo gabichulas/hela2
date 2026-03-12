@@ -263,6 +263,7 @@
         <section class="panel">
             <h3 style="margin:0;">Ruta heladerías (ACO tour)</h3>
             <p class="muted" style="margin:0;">Calcula la ruta óptima para visitar todas las heladerías encontradas en una sola pasada (distancia mínima).</p>
+            <br>
             <form id="aco-tour-form">
                 <div class="row">
                     <div>
@@ -361,10 +362,11 @@
                 </div>
                 <div style="margin-top: 12px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="tour_generate_windows" name="generate_windows" style="width: auto;">
+                        <input type="checkbox" id="tour_generate_windows" name="generate_windows" style="width: auto;" checked>
                         <span>Generar ventanas de tiempo aleatorias para testing</span>
                     </label>
                 </div>
+                <br><br>
                 <button type="submit">Calcular tour heladerías (ACO)</button>
                 <div id="aco-tour-status" class="status"></div>
             </form>
