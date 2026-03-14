@@ -26,6 +26,9 @@ def aco_tour_through_nodes(
     max_operation_time: Optional[float] = None,
     penalty_weights: Tuple[float, float, float] = (1.0, 1.0, 1.0),
     objective_weights: Tuple[float, float] = (1.0, 1.0),
+    time_factor: float = 5.0,
+    min_travel_minutes: float = 1.5,
+    length_speed_kph: float = 18.0,
 ) -> Tuple[
     Optional[List[Any]],
     float,
@@ -82,9 +85,13 @@ def aco_tour_through_nodes(
 
     def travel_time_minutes(distance: float) -> float:
         if weight == "street_time":
-            return (distance / 60) * 15
-        avg_speed_ms = 30 / 3.6
-        return (distance / avg_speed_ms) / 60
+            base_minutes = distance / 60
+        else:
+            avg_speed_ms = max(length_speed_kph, 1e-6) / 3.6
+            base_minutes = (distance / avg_speed_ms) / 60
+
+        adjusted_minutes = base_minutes * max(time_factor, 1e-6)
+        return max(min_travel_minutes, adjusted_minutes)
 
     def build_tour(start_time) -> Tuple[List[Any], float, float, float, List[Dict[str, Any]]]:
         order = [start]
@@ -252,6 +259,11 @@ def aco_tour_through_nodes(
         "total_demand": total_demand,
         "capacity": capacity,
         "max_operation_time": max_operation_time,
+        "time_model": {
+            "time_factor": time_factor,
+            "min_travel_minutes": min_travel_minutes,
+            "length_speed_kph": length_speed_kph,
+        },
         "penalty_weights": {
             "alpha": penalty_alpha,
             "beta": penalty_beta,

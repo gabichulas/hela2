@@ -201,7 +201,7 @@ async def aco_heladerias(
         for node in reachable_targets:
             # Generar ventanas de 2 horas entre las 8:00 y 18:00
             earliest = random.randint(8*60, 16*60)  # 8:00 a 16:00
-            latest = earliest + random.randint(120, 240)  # +2 a +4 horas
+            latest = earliest + random.randint(240, 480)  # +4 a +8 horas
             time_windows[node] = (earliest, latest)
 
     try:
@@ -262,27 +262,29 @@ async def aco_heladerias(
     image = render_graph_route_image(G, full_path, poi_nodes=reachable_targets)
 
     formatted_log = []
+
+    def _fmt_hhmmss(total_minutes: float) -> str:
+        total_seconds = max(0, int(round(total_minutes * 60)))
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
     for i, entry in enumerate(arrival_log, start=1):
         node = entry["node"]
         arrival_minutes = entry["arrival_minutes"]
         service_start_minutes = entry.get("service_start_minutes")
         depart_minutes = entry.get("depart_minutes")
-        
-        hours = int(arrival_minutes // 60)
-        minutes = int(arrival_minutes % 60)
-        arrival_time_str = f"{hours:02d}:{minutes:02d}"
+
+        arrival_time_str = _fmt_hhmmss(arrival_minutes)
 
         service_start_time_str = None
         if service_start_minutes is not None:
-            s_hours = int(service_start_minutes // 60)
-            s_mins = int(service_start_minutes % 60)
-            service_start_time_str = f"{s_hours:02d}:{s_mins:02d}"
+            service_start_time_str = _fmt_hhmmss(service_start_minutes)
 
         depart_time_str = None
         if depart_minutes is not None:
-            d_hours = int(depart_minutes // 60)
-            d_mins = int(depart_minutes % 60)
-            depart_time_str = f"{d_hours:02d}:{d_mins:02d}"
+            depart_time_str = _fmt_hhmmss(depart_minutes)
         
         window_str = "N/A"
         if entry["window"] is not None:

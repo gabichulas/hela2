@@ -18,6 +18,20 @@ SPEED_DEFAULTS = {
     'unclassified': 40,
 }
 
+
+def _ensure_street_time(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
+    for u, v, k, data in G.edges(keys=True, data=True):
+        length = data.get('length', 0)
+        maxspeed = data.get('maxspeed')
+        highway_type = data.get('highway', 'unclassified')
+        if isinstance(highway_type, list):
+            highway_type = highway_type[0]
+        default_speed = SPEED_DEFAULTS.get(highway_type, 50)
+        maxspeed = _parse_maxspeed(maxspeed, default_speed)
+        street_time = length / (maxspeed / 3.6)
+        G[u][v][k]['street_time'] = street_time
+    return G
+
 def _parse_maxspeed(value, default: float) -> float:
     if value is None:
         return default
@@ -49,7 +63,13 @@ def get_graph_by_city(
     if os.path.exists(cache_path):
         print(f"Loading graph from cache: {cache_path}")
         with open(cache_path, 'rb') as f:
-            return pickle.load(f)
+            G = pickle.load(f)
+        # Corrige caches antiguos que no tengan street_time o lo tengan inconsistente.
+        G = _ensure_street_time(G)
+        if use_cache:
+            with open(cache_path, 'wb') as f:
+                pickle.dump(G, f)
+        return G
     
     print(f"Downloading graph for {city} with radius {radius}m...")
     
@@ -61,17 +81,7 @@ def get_graph_by_city(
         simplify=simplify
     )
     
-    for u, v, k, data in G.edges(keys=True, data=True):
-        length = data.get('length', 0)
-        maxspeed = data.get('maxspeed')
-        highway_type = data.get('highway', 'unclassified')
-        if isinstance(highway_type, list):
-            highway_type = highway_type[0]
-        default_speed = SPEED_DEFAULTS.get(highway_type, 50)
-        maxspeed = _parse_maxspeed(maxspeed, default_speed)
-
-        street_time = length / (maxspeed / 3.6)
-        G[u][v][k]['street_time'] = street_time
+    G = _ensure_street_time(G)
     
     if use_cache:
         os.makedirs(cache_dir, exist_ok=True)
@@ -97,7 +107,13 @@ def get_graph_by_point(
     if os.path.exists(cache_path):
         print(f"Loading graph from cache: {cache_path}")
         with open(cache_path, 'rb') as f:
-            return pickle.load(f)
+            G = pickle.load(f)
+        # Corrige caches antiguos que no tengan street_time o lo tengan inconsistente.
+        G = _ensure_street_time(G)
+        if use_cache:
+            with open(cache_path, 'wb') as f:
+                pickle.dump(G, f)
+        return G
     
     print(f"Downloading graph for point ({latitude}, {longitude}) with radius {radius}m...")
     
@@ -108,17 +124,7 @@ def get_graph_by_point(
         simplify=simplify
     )
     
-    for u, v, k, data in G.edges(keys=True, data=True):
-        length = data.get('length', 0)
-        maxspeed = data.get('maxspeed')
-        highway_type = data.get('highway', 'unclassified')
-        if isinstance(highway_type, list):
-            highway_type = highway_type[0]
-        default_speed = SPEED_DEFAULTS.get(highway_type, 50)
-        maxspeed = _parse_maxspeed(maxspeed, default_speed)
-
-        street_time = length / (maxspeed / 3.6)
-        G[u][v][k]['street_time'] = street_time
+    G = _ensure_street_time(G)
         
     if use_cache:
         os.makedirs(cache_dir, exist_ok=True)
