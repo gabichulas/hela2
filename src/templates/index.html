@@ -134,6 +134,15 @@
         .heatmap .row-header { position: sticky; left: 0; background: #0f172a; z-index: 1; }
         .heatmap .cell { color: #0f172a; font-weight: 600; }
         .heatmap-wrap { margin-top: 16px; }
+        .log-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .log-table th, .log-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #1f2937; }
+        .log-table th { background: #0b1220; font-size: 13px; color: var(--muted); }
+        .log-table td { font-size: 14px; }
+        .log-status { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        .log-status.on-time { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .log-status.early { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .log-status.late { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .log-status.na { background: rgba(148, 163, 184, 0.2); color: var(--muted); }
     </style>
 </head>
 <body>
@@ -203,6 +212,41 @@
         </section>
 
         <section class="panel">
+            <h3 style="margin:0;">Centros de distribución</h3>
+            <p class="muted" style="margin:0;">Gestiona los centros de distribución guardados en la base de datos.</p>
+            <form id="centros-form">
+                <div class="fields">
+                    <div>
+                        <label for="centro_name">Nombre del centro</label>
+                        <input id="centro_name" name="name" placeholder="Ej: Centro Principal" required>
+                    </div>
+                    <div>
+                        <label for="centro_lat">Latitud</label>
+                        <input id="centro_lat" name="lat" type="number" step="any" placeholder="-32.889" required>
+                    </div>
+                    <div>
+                        <label for="centro_lon">Longitud</label>
+                        <input id="centro_lon" name="lon" type="number" step="any" placeholder="-68.845" required>
+                    </div>
+                    <div>
+                        <label for="centro_description">Descripción (opcional)</label>
+                        <input id="centro_description" name="description" placeholder="Descripción del centro">
+                    </div>
+                </div>
+                <button type="submit">Guardar centro</button>
+                <div id="centros-status" class="status"></div>
+            </form>
+        </section>
+
+        <section class="grid">
+            <div class="card">
+                <h3>Centros guardados</h3>
+                <button id="centros-refresh-btn" type="button" style="margin-bottom:10px;">Actualizar listado</button>
+                <div id="centros-list" class="list muted">Carga el listado de centros.</div>
+            </div>
+        </section>
+
+        <section class="panel">
             <h3 style="margin:0;">Heladerías cercanas</h3>
             <p class="muted" style="margin:0;">Usa los mismos parámetros de ubicación (ciudad o coordenadas + radio) y trae amenity=ice_cream como puntos de interés.</p>
             <button id="heladerias-btn" type="button">Listar heladerías</button>
@@ -219,8 +263,15 @@
         <section class="panel">
             <h3 style="margin:0;">Ruta heladerías (ACO tour)</h3>
             <p class="muted" style="margin:0;">Calcula la ruta óptima para visitar todas las heladerías encontradas en una sola pasada (distancia mínima).</p>
+            <br>
             <form id="aco-tour-form">
                 <div class="row">
+                    <div>
+                        <label for="tour_centro_select">Centro de distribución (opcional)</label>
+                        <select id="tour_centro_select">
+                            <option value="">-- Selecciona un centro o ingresa coordenadas --</option>
+                        </select>
+                    </div>
                     <div>
                         <label for="tour_origin_latitude">Latitud origen</label>
                         <input id="tour_origin_latitude" name="origin_latitude" type="number" step="any" placeholder="-32.889" required>
@@ -235,6 +286,7 @@
                         <label for="tour_weight">Peso</label>
                         <select id="tour_weight" name="weight">
                             <option value="length">length (metros)</option>
+                            <option value="street_time">street_time (segundos)</option>
                         </select>
                     </div>
                     <div>
@@ -261,7 +313,60 @@
                         <label for="tour_q">Q (depósito)</label>
                         <input id="tour_q" name="q" type="number" step="1" value="100">
                     </div>
+                    <div>
+                        <label for="tour_start_time">Hora de inicio</label>
+                        <input id="tour_start_time" name="start_time" type="time" value="08:00">
+                    </div>
+                    <div>
+                        <label for="tour_gamma">Gamma (urgencia)</label>
+                        <input id="tour_gamma" name="gamma" type="number" step="0.1" value="1">
+                    </div>
+                    <div>
+                        <label for="tour_unload_time">Tiempo descarga (min)</label>
+                        <input id="tour_unload_time" name="unload_time" type="number" min="0" value="10">
+                    </div>
                 </div>
+                <div class="row">
+                    <div>
+                        <label for="tour_capacity">Capacidad vehiculo (opcional)</label>
+                        <input id="tour_capacity" name="capacity" type="number" min="0" step="0.1" placeholder="Ej: 50">
+                    </div>
+                    <div>
+                        <label for="tour_default_demand">Demanda por heladeria</label>
+                        <input id="tour_default_demand" name="default_demand" type="number" min="0" step="0.1" value="1">
+                    </div>
+                    <div>
+                        <label for="tour_max_operation_time">Tiempo max operacion (min)</label>
+                        <input id="tour_max_operation_time" name="max_operation_time" type="number" min="0" step="1" placeholder="Ej: 480">
+                    </div>
+                    <div>
+                        <label for="tour_penalty_alpha">Penalizacion ventana (alpha)</label>
+                        <input id="tour_penalty_alpha" name="penalty_alpha" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_penalty_beta">Penalizacion capacidad (beta)</label>
+                        <input id="tour_penalty_beta" name="penalty_beta" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_penalty_gamma">Penalizacion tiempo op (gamma)</label>
+                        <input id="tour_penalty_gamma" name="penalty_gamma" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_lambda_weight">Peso distancia (lambda)</label>
+                        <input id="tour_lambda_weight" name="lambda_weight" type="number" step="0.1" value="1.0">
+                    </div>
+                    <div>
+                        <label for="tour_mu_weight">Peso penalizacion (mu)</label>
+                        <input id="tour_mu_weight" name="mu_weight" type="number" step="0.1" value="1.0">
+                    </div>
+                </div>
+                <div style="margin-top: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="tour_generate_windows" name="generate_windows" style="width: auto;" checked>
+                        <span>Generar ventanas de tiempo aleatorias para testing</span>
+                    </label>
+                </div>
+                <br><br>
                 <button type="submit">Calcular tour heladerías (ACO)</button>
                 <div id="aco-tour-status" class="status"></div>
             </form>
@@ -285,6 +390,12 @@
                 <h3>Historial tour</h3>
                 <div id="aco-tour-history" class="muted">Todavia no corriste el tour.</div>
             </div>
+        </section>
+
+        <section class="panel">
+            <h3 style="margin:0;">Log de llegadas</h3>
+            <p class="muted" style="margin:0 0 10px 0;">Tiempos de llegada a cada heladería y estado de ventanas de tiempo.</p>
+            <div id="aco-arrival-log" class="muted">Ejecuta el tour para ver el log de llegadas.</div>
         </section>
 
         <section class="panel heatmap-wrap">
@@ -377,6 +488,73 @@
             }
         });
 
+        // ----------- Centros de distribución -----------
+        const centrosForm = document.getElementById("centros-form");
+        const centrosStatus = document.getElementById("centros-status");
+        const centrosList = document.getElementById("centros-list");
+        const centrosRefreshBtn = document.getElementById("centros-refresh-btn");
+
+        async function loadCentros() {
+            centrosList.textContent = "Cargando...";
+            try {
+                const response = await fetch("/centros");
+                if (!response.ok) {
+                    throw new Error("Error al cargar centros");
+                }
+                const centros = await response.json();
+                if (centros.length === 0) {
+                    centrosList.textContent = "No hay centros guardados.";
+                    return;
+                }
+                centrosList.innerHTML = centros.map(c => `
+                    <div class="item">
+                        <strong>${c.name}</strong>
+                        <small>ID: ${c.id} | Lat: ${c.lat.toFixed(5)} | Lon: ${c.lon.toFixed(5)}</small>
+                        ${c.description ? `<small style="color:#94a3b8;">${c.description}</small>` : ''}
+                    </div>
+                `).join("");
+            } catch (err) {
+                centrosList.innerHTML = `<span style="color:#ef4444;">${err.message}</span>`;
+            }
+        }
+
+        centrosForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            centrosStatus.textContent = "Guardando centro...";
+
+            const formData = new FormData(centrosForm);
+            const centro = {
+                name: formData.get("name"),
+                lat: parseFloat(formData.get("lat")),
+                lon: parseFloat(formData.get("lon")),
+                description: formData.get("description") || null
+            };
+
+            try {
+                const response = await fetch("/centros", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(centro)
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Error al guardar centro");
+                }
+                const saved = await response.json();
+                centrosStatus.textContent = `Centro guardado con ID: ${saved.id}`;
+                centrosForm.reset();
+                loadCentros(); // Recargar lista
+                loadCentrosForTour(); // Recargar selector del tour
+            } catch (err) {
+                centrosStatus.textContent = err.message;
+            }
+        });
+
+        centrosRefreshBtn.addEventListener("click", loadCentros);
+
+        // Cargar centros al iniciar
+        loadCentros();
+
         // ----------- ACO Tour (heladerías) -----------
         const acoTourForm = document.getElementById("aco-tour-form");
         const acoTourStatus = document.getElementById("aco-tour-status");
@@ -385,6 +563,41 @@
         const acoTourBaseImg = document.getElementById("aco-tour-base-image");
         const acoTourImg = document.getElementById("aco-tour-image");
         const acoTourHeatmap = document.getElementById("aco-tour-heatmap");
+        const acoArrivalLog = document.getElementById("aco-arrival-log");
+        const tourCentroSelect = document.getElementById("tour_centro_select");
+        const tourOriginLat = document.getElementById("tour_origin_latitude");
+        const tourOriginLon = document.getElementById("tour_origin_longitude");
+
+        // Cargar centros en el selector del tour
+        async function loadCentrosForTour() {
+            try {
+                const response = await fetch("/centros");
+                if (!response.ok) return;
+                const centros = await response.json();
+                
+                tourCentroSelect.innerHTML = '<option value="">-- Selecciona un centro o ingresa coordenadas --</option>';
+                centros.forEach(c => {
+                    const option = document.createElement("option");
+                    option.value = JSON.stringify({ lat: c.lat, lon: c.lon, name: c.name });
+                    option.textContent = `${c.name} (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})`;
+                    tourCentroSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error("Error cargando centros para tour:", err);
+            }
+        }
+
+        // Cuando se selecciona un centro, rellenar coordenadas
+        tourCentroSelect.addEventListener("change", () => {
+            if (tourCentroSelect.value) {
+                const centro = JSON.parse(tourCentroSelect.value);
+                tourOriginLat.value = centro.lat;
+                tourOriginLon.value = centro.lon;
+            }
+        });
+
+        // Cargar centros para el tour al iniciar
+        loadCentrosForTour();
 
         acoTourForm.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -393,7 +606,8 @@
             acoTourHistory.textContent = "";
             acoTourBaseImg.src = "";
             acoTourImg.src = "";
-        acoTourHeatmap.textContent = "Cargando matriz...";
+            acoTourHeatmap.textContent = "Cargando matriz...";
+            acoArrivalLog.textContent = "Cargando log...";
 
             const baseData = new FormData(form);
             const tourData = new FormData(acoTourForm);
@@ -405,6 +619,32 @@
             tourData.set("rho", document.getElementById("tour_rho").value);
             tourData.set("q", document.getElementById("tour_q").value);
             tourData.set("weight", document.getElementById("tour_weight").value);
+            tourData.set("gamma", document.getElementById("tour_gamma").value);
+            tourData.set("unload_time", document.getElementById("tour_unload_time").value);
+            tourData.set("generate_windows", document.getElementById("tour_generate_windows").checked ? "true" : "false");
+            tourData.set("default_demand", document.getElementById("tour_default_demand").value);
+            tourData.set("penalty_alpha", document.getElementById("tour_penalty_alpha").value);
+            tourData.set("penalty_beta", document.getElementById("tour_penalty_beta").value);
+            tourData.set("penalty_gamma", document.getElementById("tour_penalty_gamma").value);
+            tourData.set("lambda_weight", document.getElementById("tour_lambda_weight").value);
+            tourData.set("mu_weight", document.getElementById("tour_mu_weight").value);
+
+            const capacityValue = document.getElementById("tour_capacity").value;
+            if (capacityValue) {
+                tourData.set("capacity", capacityValue);
+            }
+            const maxOpValue = document.getElementById("tour_max_operation_time").value;
+            if (maxOpValue) {
+                tourData.set("max_operation_time", maxOpValue);
+            }
+            
+            // Convertir hora de inicio a minutos desde medianoche
+            const startTimeInput = document.getElementById("tour_start_time").value;
+            if (startTimeInput) {
+                const [hours, minutes] = startTimeInput.split(":").map(Number);
+                const startTimeMinutes = hours * 60 + minutes;
+                tourData.set("start_time", startTimeMinutes);
+            }
 
             for (const [k, v] of tourData.entries()) {
                 baseData.append(k, v);
@@ -419,15 +659,21 @@
                 const data = await response.json();
                 acoTourBaseImg.src = data.base_image;
                 acoTourImg.src = data.image;
+                const metrics = data.metrics || {};
+                const distanceTotal = metrics.distance_total ?? data.cost;
+                const objectiveCost = metrics.objective_cost ?? data.cost;
+                const penaltyTotal = metrics.penalty_total ?? 0;
                 acoTourInfo.innerHTML = `
                     <div class="flex">
-                        <div class="pill">Costo total: ${data.cost.toFixed(2)} (${baseData.get("weight")})</div>
+                        <div class="pill">Costo objetivo: ${objectiveCost.toFixed(2)}</div>
+                        <div class="pill">Distancia total: ${distanceTotal.toFixed(2)} (${baseData.get("weight")})</div>
+                        <div class="pill">Penalización total: ${penaltyTotal.toFixed(2)}</div>
                         <div class="pill">Heladerías: ${data.count_targets}</div>
                         <div class="pill">Nodos en ruta: ${data.path.length}</div>
                     </div>
                     <div class="muted" style="margin-top:8px;">Orden: ${data.order_labels.join(" → ")}</div>
                 `;
-                acoTourHistory.textContent = "Historial de mejor costo: " + data.history.map(v => v.toFixed(2)).join(" → ");
+                acoTourHistory.textContent = "Historial de mejor costo objetivo: " + data.history.map(v => v.toFixed(2)).join(" → ");
                 acoTourStatus.textContent = "Listo. Ruta calculada para todas las heladerías.";
 
                 // Heatmap de distancias
@@ -476,6 +722,39 @@
                     });
                     html += "</tbody></table>";
                     acoTourHeatmap.innerHTML = html;
+                }
+
+                // Log de llegadas
+                const arrivalLog = data.arrival_log || [];
+                if (arrivalLog.length === 0) {
+                    acoArrivalLog.textContent = "No hay información de llegadas.";
+                } else {
+                    let logHtml = '<table class="log-table"><thead><tr>';
+                    logHtml += '<th>#</th><th>Heladería</th><th>Llegada</th>';
+                    if (data.time_windows_enabled) {
+                        logHtml += '<th>Ventana</th><th>Estado</th>';
+                    }
+                    logHtml += '</tr></thead><tbody>';
+                    
+                    arrivalLog.forEach(entry => {
+                        const statusClass = 
+                            entry.status === "A TIEMPO" ? "on-time" :
+                            entry.status === "TEMPRANO" ? "early" :
+                            entry.status === "TARDÍO" ? "late" : "na";
+                        
+                        logHtml += '<tr>';
+                        logHtml += `<td>${entry.sequence}</td>`;
+                        logHtml += `<td>${entry.label}</td>`;
+                        logHtml += `<td><strong>${entry.arrival_time}</strong></td>`;
+                        if (data.time_windows_enabled) {
+                            logHtml += `<td>${entry.window}</td>`;
+                            logHtml += `<td><span class="log-status ${statusClass}">${entry.status}</span></td>`;
+                        }
+                        logHtml += '</tr>';
+                    });
+                    
+                    logHtml += '</tbody></table>';
+                    acoArrivalLog.innerHTML = logHtml;
                 }
             } catch (err) {
                 acoTourStatus.textContent = err.message;

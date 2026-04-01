@@ -1,14 +1,11 @@
-"""
-Script para descargar heladerías desde OSM alrededor de una ciudad o coordenadas y guardarlas como CSV.
-Usa el radio en metros.
-"""
 import argparse
 from pathlib import Path
-from typing import Tuple, Optional
+import sys
 
-import pandas as pd
+# Agregar directorio padre al path para imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from utils.graph_utils import get_ice_cream_places
+from src.core.osm import get_ice_cream_places
 
 
 def main():

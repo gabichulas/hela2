@@ -1,149 +1,27 @@
-import base64
-import math
-from io import BytesIO
-from pathlib import Path
-from typing import Optional, List
-
-import matplotlib.pyplot as plt
-import networkx as nx
-import osmnx as ox
+from typing import Optional, List, Dict
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.templating import Jinja2Templates
-from shapely.geometry import Point
+from sqlmodel import Session, select
+import networkx as nx
 
-from utils.graph_utils import (
-    get_graph_by_city,
-    get_graph_by_point,
-    get_graph_stats,
-    get_ice_cream_places,
-    aco_tour_through_nodes,
-)
+from src.api.dependencies import engine, templates, create_db_and_tables
+from src.models import DistributionCenter
+from src.core.osm import get_ice_cream_places
+from src.core.graph import get_graph_by_city, get_graph_by_point, get_graph_stats
+from src.core.algorithms import aco_tour_through_nodes
+from src.visualization.renders import render_graph_image, render_graph_with_poi, render_graph_route_image
 
+app = FastAPI()
 
-app = FastAPI(
-    title="Hela2 OSM",
-    description="Frontend minimo para generar mapas y estadisticas con OSMnx",
-)
-
-templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
-
-
-def render_graph_image(G) -> str:
-    """
-    Renderiza el grafo en memoria y devuelve una data URI base64 (PNG).
-    """
-    fig, ax = ox.plot_graph(
-        G,
-        node_size=5,
-        edge_linewidth=0.5,
-        figsize=(10, 10),
-        show=False,
-        close=False,
-    )
-
-    buffer = BytesIO()
-    fig.savefig(buffer, format="png", bbox_inches="tight")
-    buffer.seek(0)
-    plt.close(fig)
-
-    encoded = base64.b64encode(buffer.read()).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
-
-
-def render_graph_with_poi(G, poi_nodes: Optional[list] = None) -> str:
-    """
-    Renderiza el grafo con puntos de interés resaltados (rojo) y devuelve data URI.
-    """
-    fig, ax = ox.plot_graph(
-        G,
-        node_size=4,
-        node_color="#e2e8f0",
-        edge_color="#475569",
-        edge_linewidth=0.7,
-        bgcolor="#0b1220",
-        figsize=(10, 10),
-        show=False,
-        close=False,
-    )
-    if poi_nodes:
-        poi_nodes = list(dict.fromkeys(poi_nodes))
-        xs, ys = [], []
-        for n in poi_nodes:
-            data = G.nodes.get(n, {})
-            x = data.get("x")
-            y = data.get("y")
-            if x is None or y is None:
-                continue
-            xs.append(x)
-            ys.append(y)
-        if xs:
-            ax.scatter(xs, ys, c="red", s=18, zorder=5, edgecolors="white", linewidths=0.5)
-
-    buffer = BytesIO()
-    fig.savefig(buffer, format="png", bbox_inches="tight")
-    buffer.seek(0)
-    plt.close(fig)
-    encoded = base64.b64encode(buffer.read()).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
-
-
-def render_graph_route_image(G, route_nodes, poi_nodes: Optional[list] = None) -> str:
-    """
-    Renderiza el grafo con una ruta destacada y devuelve una data URI base64.
-    Si poi_nodes se define, los pinta en rojo para distinguirlos.
-    """
-    fig, ax = ox.plot_graph(
-        G,
-        node_size=4,
-        node_color="#cbd5e1",
-        edge_color="#334155",
-        edge_linewidth=0.7,
-        bgcolor="#0b1220",
-        figsize=(10, 10),
-        show=False,
-        close=False,
-    )
-
-    # Dibujar la ruta
-    if route_nodes:
-        coords = [(G.nodes[n].get("x"), G.nodes[n].get("y")) for n in route_nodes if "x" in G.nodes[n] and "y" in G.nodes[n]]
-        if len(coords) >= 2:
-            xs, ys = zip(*coords)
-            ax.plot(xs, ys, color="#f97316", linewidth=3, zorder=6, alpha=0.95)
-            # Destacar inicio y fin
-            ax.scatter([xs[0]], [ys[0]], c="#22c55e", s=40, zorder=7, edgecolors="white", linewidths=0.8)
-            ax.scatter([xs[-1]], [ys[-1]], c="#f59e0b", s=40, zorder=7, edgecolors="white", linewidths=0.8)
-            # nodos de la ruta
-            ax.scatter(xs, ys, c="#fef08a", s=8, zorder=6, edgecolors="none", alpha=0.8)
-
-    if poi_nodes:
-        poi_nodes = list(dict.fromkeys(poi_nodes))
-        xs = []
-        ys = []
-        for n in poi_nodes:
-            data = G.nodes.get(n, {})
-            x = data.get("x")
-            y = data.get("y")
-            if x is None or y is None:
-                continue
-            xs.append(x)
-            ys.append(y)
-        if xs:
-            ax.scatter(xs, ys, c="red", s=18, zorder=5, edgecolors="white", linewidths=0.5)
-
-    buffer = BytesIO()
-    fig.savefig(buffer, format="png", bbox_inches="tight")
-    buffer.seek(0)
-    plt.close(fig)
-
-    encoded = base64.b64encode(buffer.read()).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
 
 
 def project_and_nearest_node(G, lon: float, lat: float) -> int:
-    """
-    Proyecta el grafo y devuelve el nodo más cercano a las coordenadas dadas.
-    """
+    import osmnx as ox
+    from shapely.geometry import Point
+    import math
+
     G_proj = ox.project_graph(G)
     pt_proj, _ = ox.projection.project_geometry(Point(lon, lat), to_crs=G_proj.graph["crs"])
     x, y = pt_proj.x, pt_proj.y
@@ -163,7 +41,6 @@ def project_and_nearest_node(G, lon: float, lat: float) -> int:
     return closest
 
 
-@app.get("/")
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
@@ -186,6 +63,11 @@ def build_graph(
     return get_graph_by_city(city, radius, network_type=network_type)
 
 
+@app.get("/")
+async def get_index(request: Request):
+    return await index(request)
+
+
 @app.post("/graph")
 async def graph(
     mode: str = Form("city"),
@@ -202,6 +84,21 @@ async def graph(
     return {"stats": stats, "image": image}
 
 
+@app.post("/centros")
+async def crear_centro(centro: DistributionCenter):
+    with Session(engine) as session:
+        session.add(centro)
+        session.commit()
+        session.refresh(centro)
+        return centro
+    
+
+@app.get("/centros")
+async def listar_centros():
+    with Session(engine) as session:
+        return session.exec(select(DistributionCenter)).all()
+
+
 @app.post("/heladerias")
 async def heladerias(
     mode: str = Form("city"),
@@ -210,10 +107,6 @@ async def heladerias(
     longitude: Optional[float] = Form(None),
     radius: int = Form(1000),
 ):
-    """
-    Devuelve heladerías (amenity=ice_cream) dentro del radio dado.
-    Reutiliza los mismos parámetros de ubicación que /graph.
-    """
     try:
         df = get_ice_cream_places(city, latitude, longitude, radius)
     except ValueError as exc:
@@ -242,11 +135,19 @@ async def aco_heladerias(
     beta: float = Form(2.0),
     rho: float = Form(0.5),
     q: float = Form(100.0),
+    start_time: Optional[float] = Form(None),
+    gamma: float = Form(0.7),
+    unload_time: int = Form(10),
+    generate_windows: str = Form("false"),
+    capacity: Optional[float] = Form(None),
+    default_demand: float = Form(1.0),
+    max_operation_time: Optional[float] = Form(None),
+    penalty_alpha: float = Form(1.0),
+    penalty_beta: float = Form(1.0),
+    penalty_gamma: float = Form(1.0),
+    lambda_weight: float = Form(1.0),
+    mu_weight: float = Form(1.0),
 ):
-    """
-    Ejecuta ACO tipo TSP para visitar todas las heladerías en el radio indicado.
-    Usa origen (lat/lon) y las heladerías se mapean al nodo más cercano del grafo.
-    """
     G = build_graph(mode, city, latitude, longitude, radius, network_type)
 
     try:
@@ -278,7 +179,7 @@ async def aco_heladerias(
         if addr:
             label_parts.append(addr)
         label = " - ".join(label_parts) if label_parts else f"Heladería {row.get('osmid', node)}"
-        node_labels[node] = node_labels.get(node, label)  # conserva primer nombre útil
+        node_labels[node] = node_labels.get(node, label)
 
     # Filtrar solo la componente conectada del nodo origen
     G_ud = G.to_undirected()
@@ -290,11 +191,21 @@ async def aco_heladerias(
             status_code=404,
             detail="Las heladerías están fuera de la componente conectada del origen. Aumenta el radio o ajusta la ubicación.",
         )
-    # Mantener labels solo para los alcanzables
     node_labels = {n: node_labels.get(n, f"Heladería {n}") for n in reachable_targets}
 
+    # Generar ventanas de tiempo aleatorias si está habilitado
+    time_windows = None
+    if generate_windows.lower() == "true":
+        import random
+        time_windows = {}
+        for node in reachable_targets:
+            # Generar ventanas de 2 horas entre las 8:00 y 18:00
+            earliest = random.randint(8*60, 16*60)  # 8:00 a 16:00
+            latest = earliest + random.randint(240, 480)  # +4 a +8 horas
+            time_windows[node] = (earliest, latest)
+
     try:
-        order, cost, history, full_path, pairwise, tour_legs = aco_tour_through_nodes(
+        order, cost, history, full_path, pairwise, tour_legs, arrival_log, metrics = aco_tour_through_nodes(
             G,
             start=origin_node,
             targets=reachable_targets,
@@ -305,6 +216,15 @@ async def aco_heladerias(
             beta=beta,
             rho=rho,
             q=q,
+            start_time=start_time if start_time is not None else 0,
+            gamma=gamma,
+            time_windows=time_windows,
+            unload_time=unload_time,
+            default_demand=default_demand,
+            capacity=capacity,
+            max_operation_time=max_operation_time,
+            penalty_weights=(penalty_alpha, penalty_beta, penalty_gamma),
+            objective_weights=(lambda_weight, mu_weight),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -317,7 +237,6 @@ async def aco_heladerias(
     origin_label = "Centro de distribución"
     order_labels = [origin_label] + [node_labels.get(n, str(n)) for n in order[1:-1]] + [origin_label]
 
-    # Mapa de labels para todos los nodos relevantes
     label_map = {origin_node: origin_label}
     for n in reachable_targets:
         label_map[n] = node_labels.get(n, f"Heladería {n}")
@@ -342,10 +261,57 @@ async def aco_heladerias(
     base_image = render_graph_with_poi(G, poi_nodes=reachable_targets)
     image = render_graph_route_image(G, full_path, poi_nodes=reachable_targets)
 
+    formatted_log = []
+
+    def _fmt_hhmmss(total_minutes: float) -> str:
+        total_seconds = max(0, int(round(total_minutes * 60)))
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+    for i, entry in enumerate(arrival_log, start=1):
+        node = entry["node"]
+        arrival_minutes = entry["arrival_minutes"]
+        service_start_minutes = entry.get("service_start_minutes")
+        depart_minutes = entry.get("depart_minutes")
+
+        arrival_time_str = _fmt_hhmmss(arrival_minutes)
+
+        service_start_time_str = None
+        if service_start_minutes is not None:
+            service_start_time_str = _fmt_hhmmss(service_start_minutes)
+
+        depart_time_str = None
+        if depart_minutes is not None:
+            depart_time_str = _fmt_hhmmss(depart_minutes)
+        
+        window_str = "N/A"
+        if entry["window"] is not None:
+            earliest, latest = entry["window"]
+            e_hours, e_mins = int(earliest // 60), int(earliest % 60)
+            l_hours, l_mins = int(latest // 60), int(latest % 60)
+            window_str = f"{e_hours:02d}:{e_mins:02d} - {l_hours:02d}:{l_mins:02d}"
+        
+        formatted_log.append({
+            "sequence": i,
+            "node": node,
+            "label": node_labels.get(node, f"Heladería {node}"),
+            "arrival_time": arrival_time_str,
+            "arrival_minutes": round(arrival_minutes, 2),
+            "service_start_time": service_start_time_str,
+            "service_start_minutes": round(service_start_minutes, 2) if service_start_minutes is not None else None,
+            "depart_time": depart_time_str,
+            "depart_minutes": round(depart_minutes, 2) if depart_minutes is not None else None,
+            "wait_minutes": round(entry.get("wait_minutes", 0.0), 2),
+            "window": window_str,
+            "status": entry["status"],
+        })
+
     return {
         "origin_node": origin_node,
         "target_nodes": list(dict.fromkeys(reachable_targets)),
-        "order": order,  # ya incluye el origen al final
+        "order": order,
         "order_labels": order_labels,
         "path": full_path,
         "cost": cost,
@@ -357,4 +323,7 @@ async def aco_heladerias(
         "label_map": label_map,
         "base_image": base_image,
         "image": image,
+        "arrival_log": formatted_log,
+        "time_windows_enabled": generate_windows.lower() == "true",
+        "metrics": metrics,
     }
