@@ -1,0 +1,79 @@
+DATA ANALYSIS
+================================================================================
+rows_ok=1560
+scenarios=['E1_small', 'E2_medium']
+weights=['length', 'street_time']
+configs=26
+
+TOP-3 BY (scenario, weight) USING obj_med + obj_iqr
+--------------------------------------------------------------------------------
+[E1_small | length]
+  rank=1 length_alpha0.8: obj_med=5337.746, obj_iqr=220.024, ontime_med=80.000, exec_med=0.236
+  rank=2 length_ants40: obj_med=5377.676, obj_iqr=252.114, ontime_med=80.000, exec_med=0.309
+  rank=3 length_beta2.5: obj_med=5445.164, obj_iqr=238.870, ontime_med=80.000, exec_med=0.235
+
+[E1_small | street_time]
+  rank=1 street_time_iters120: obj_med=584.289, obj_iqr=47.920, ontime_med=80.000, exec_med=0.316
+  rank=2 street_time_beta2.5: obj_med=585.215, obj_iqr=29.117, ontime_med=80.000, exec_med=0.214
+  rank=3 street_time_alpha0.8: obj_med=590.130, obj_iqr=47.596, ontime_med=80.000, exec_med=0.214
+
+[E2_medium | length]
+  rank=1 length_alpha0.8: obj_med=8267.065, obj_iqr=273.023, ontime_med=85.714, exec_med=0.438
+  rank=2 length_beta2.5: obj_med=8346.139, obj_iqr=623.439, ontime_med=85.714, exec_med=0.437
+  rank=3 length_base: obj_med=8426.081, obj_iqr=409.720, ontime_med=85.714, exec_med=0.435
+
+[E2_medium | street_time]
+  rank=1 street_time_alpha0.8: obj_med=830.948, obj_iqr=41.901, ontime_med=85.714, exec_med=0.396
+  rank=2 street_time_ants40: obj_med=841.402, obj_iqr=56.894, ontime_med=85.714, exec_med=0.523
+  rank=3 street_time_beta2.5: obj_med=854.048, obj_iqr=56.282, ontime_med=89.286, exec_med=0.399
+
+ONE-FACTOR SENSITIVITY (Spearman with objective_cost, per scenario+weight) 
+--------------------------------------------------------------------------------
+[E1_small | length]
+  n_ants   rho=-0.1058 (n=390)
+  n_iters  rho=+0.0448 (n=390)
+  alpha    rho=+0.2677 (n=390)
+  beta     rho=-0.1485 (n=390)
+  gamma    rho=-0.0358 (n=390)
+  rho      rho=+0.0770 (n=390)
+
+[E1_small | street_time]
+  n_ants   rho=-0.0984 (n=390)
+  n_iters  rho=-0.1102 (n=390)
+  alpha    rho=+0.0908 (n=390)
+  beta     rho=-0.2074 (n=390)
+  gamma    rho=-0.1095 (n=390)
+  rho      rho=+0.0196 (n=390)
+
+[E2_medium | length]
+  n_ants   rho=-0.0566 (n=390)
+  n_iters  rho=-0.0673 (n=390)
+  alpha    rho=+0.2796 (n=390)
+  beta     rho=-0.0401 (n=390)
+  gamma    rho=+0.0014 (n=390)
+  rho      rho=+0.0190 (n=390)
+
+[E2_medium | street_time]
+  n_ants   rho=-0.1687 (n=390)
+  n_iters  rho=-0.0890 (n=390)
+  alpha    rho=+0.3107 (n=390)
+  beta     rho=-0.0863 (n=390)
+  gamma    rho=-0.0119 (n=390)
+  rho      rho=+0.0153 (n=390)
+
+GLOBAL COMPARABLE METRICS (across weights): exec_s, pct_on_time
+--------------------------------------------------------------------------------
+Fastest configs (median exec_s):
+  street_time_iters50: exec_med=0.1919, ontime_med=82.857
+  street_time_ants20: exec_med=0.2045, ontime_med=85.714
+  length_iters50: exec_med=0.2115, ontime_med=80.000
+  length_ants20: exec_med=0.2221, ontime_med=80.000
+  street_time_base: exec_med=0.2939, ontime_med=85.714
+  street_time_rho0.3: exec_med=0.2947, ontime_med=80.000
+Best on-time configs (median pct_on_time):
+  length_beta2.5: ontime_med=85.714, exec_med=0.3253
+  street_time_ants20: ontime_med=85.714, exec_med=0.2045
+  street_time_beta1.5: ontime_med=85.714, exec_med=0.2997
+  street_time_beta2.5: ontime_med=85.714, exec_med=0.3012
+  street_time_gamma0.7: ontime_med=85.714, exec_med=0.3029
+  street_time_gamma1.3: ontime_med=85.714, exec_med=0.2960
