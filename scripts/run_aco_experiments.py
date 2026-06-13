@@ -131,8 +131,11 @@ def map_targets(
             continue
 
     mapped = list(dict.fromkeys(mapped))
-    connected = set(nx.node_connected_component(G.to_undirected(), origin_node))
-    mapped = [n for n in mapped if n in connected and n != origin_node]
+    # Ensure targets are reachably connected to and from the origin node in the directed graph G
+    mapped = [
+        n for n in mapped
+        if n != origin_node and nx.has_path(G, origin_node, n) and nx.has_path(G, n, origin_node)
+    ]
 
     if len(mapped) < 4:
         raise RuntimeError(f"Escenario {s.name}: targets alcanzables insuficientes ({len(mapped)})")
