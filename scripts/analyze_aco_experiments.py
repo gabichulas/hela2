@@ -154,6 +154,12 @@ def main() -> None:
     summary_csv = args.out_dir / "summary_by_scenario_weight.csv"
     summary_md = args.out_dir / "summary_by_scenario_weight.md"
     summary.to_csv(summary_csv, index=False)
+    try:
+        import tabulate
+        summary.to_markdown(summary_md, index=False)
+    except ImportError:
+        with summary_md.open("w", encoding="utf-8") as f:
+            f.write(summary.to_string(index=False))
 
     for metric in ["objective_cost", "distance_total", "penalty_total"]:
         plot_scale_metric_by_scenario_weight(ok, args.out_dir, metric)

@@ -276,3 +276,322 @@ def aco_tour_through_nodes(
     }
 
     return best_order, best_objective, history, full_path, pairwise, tour_legs, best_arrival_log, metrics
+
+
+def compute_dist_matrix(
+    G: nx.MultiDiGraph,
+    nodes: List[Any],
+    weight: str
+) -> Tuple[Dict[Tuple[Any, Any], float], Dict[Tuple[Any, Any], List[Any]]]:
+    dist: Dict[Tuple[Any, Any], float] = {}
+    spaths: Dict[Tuple[Any, Any], List[Any]] = {}
+    for i in nodes:
+        lengths, paths = nx.single_source_dijkstra(G, i, weight=weight)
+        for j in nodes:
+            if i == j:
+                continue
+            if j not in lengths:
+                raise ValueError(f"No hay camino entre {i} y {j}")
+            dist[(i, j)] = lengths[j]
+            spaths[(i, j)] = paths[j]
+    return dist, spaths
+
+
+def evaluate_tour_path(
+    order: List[Any],
+    start_time: int,
+    unload_time: int,
+    time_windows: Optional[Dict[Any, Tuple[int, int]]],
+    dist: Dict[Tuple[Any, Any], float],
+    weight: str = "street_time",
+    time_factor: float = 5.0,
+    min_travel_minutes: float = 1.5,
+    length_speed_kph: float = 18.0,
+) -> Tuple[float, float, float, List[Dict[str, Any]]]:
+    def travel_time_minutes(distance: float) -> float:
+        if weight == "street_time":
+            base_minutes = distance / 60
+        else:
+            avg_speed_ms = max(length_speed_kph, 1e-6) / 3.6
+            base_minutes = (distance / avg_speed_ms) / 60
+
+        adjusted_minutes = base_minutes * max(time_factor, 1e-6)
+        return max(min_travel_minutes, adjusted_minutes)
+
+    total_distance = 0.0
+    penalty_window = 0.0
+    current_time = start_time
+    arrival_log = []
+
+    for i in range(1, len(order) - 1):
+        current = order[i - 1]
+        nxt = order[i]
+        d = dist[(current, nxt)]
+        travel_time_min = travel_time_minutes(d)
+        arrival_time = current_time + travel_time_min
+
+        window_status = "N/A"
+        window_info = None
+        wait_minutes = 0.0
+        if time_windows and nxt in time_windows:
+            earliest, latest = time_windows[nxt]
+            window_info = (earliest, latest)
+            penalty_window += max(0.0, arrival_time - latest) + max(0.0, earliest - arrival_time)
+            if arrival_time < earliest:
+                window_status = "TEMPRANO"
+                wait_minutes = earliest - arrival_time
+            elif arrival_time <= latest:
+                window_status = "A TIEMPO"
+            else:
+                window_status = "TARDÍO"
+        service_start = arrival_time + wait_minutes
+        depart_time = service_start + unload_time
+        current_time = depart_time
+
+        arrival_log.append({
+            "node": nxt,
+            "arrival_minutes": arrival_time,
+            "service_start_minutes": service_start,
+            "depart_minutes": depart_time,
+            "wait_minutes": wait_minutes,
+            "window": window_info,
+            "status": window_status,
+        })
+        total_distance += d
+
+    # Last leg back to start:
+    last_target = order[-2]
+    start_node = order[-1]
+    d_last = dist[(last_target, start_node)]
+    total_distance += d_last
+    current_time += travel_time_minutes(d_last)
+    total_time = current_time - start_time
+
+    return total_distance, penalty_window, total_time, arrival_log
+
+
+def random_tour_through_nodes(
+    G: nx.MultiDiGraph,
+    start: Any,
+    targets: List[Any],
+    weight: str = "street_time",
+    start_time: int = 10*60,
+    time_windows: Optional[Dict[Any, Tuple[int, int]]] = None,
+    unload_time: int = 10,
+    seed: Optional[int] = None,
+    demands: Optional[Dict[Any, float]] = None,
+    default_demand: float = 1.0,
+    capacity: Optional[float] = None,
+    max_operation_time: Optional[float] = None,
+    penalty_weights: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+    objective_weights: Tuple[float, float] = (1.0, 1.0),
+    time_factor: float = 5.0,
+    min_travel_minutes: float = 1.5,
+    length_speed_kph: float = 18.0,
+) -> Tuple[
+    Optional[List[Any]],
+    float,
+    List[float],
+    List[Any],
+    List[Dict[str, Any]],
+    List[Dict[str, Any]],
+    List[Dict[str, Any]],
+    Dict[str, Any],
+]:
+    if start not in G:
+        raise ValueError("El nodo de inicio no existe en el grafo")
+    unique_targets = [t for t in dict.fromkeys(targets) if t != start]
+    if not unique_targets:
+        raise ValueError("Se necesita al menos una heladería destino")
+    nodes = [start] + unique_targets
+
+    rng = random.Random(seed)
+    dist, spaths = compute_dist_matrix(G, nodes, weight)
+
+    shuffled = list(unique_targets)
+    rng.shuffle(shuffled)
+    order = [start] + shuffled + [start]
+
+    total_distance, penalty_window, total_time, arrival_log = evaluate_tour_path(
+        order=order,
+        start_time=start_time,
+        unload_time=unload_time,
+        time_windows=time_windows,
+        dist=dist,
+        weight=weight,
+        time_factor=time_factor,
+        min_travel_minutes=min_travel_minutes,
+        length_speed_kph=length_speed_kph,
+    )
+
+    penalty_alpha, penalty_beta, penalty_gamma = penalty_weights
+    lambda_weight, mu_weight = objective_weights
+    node_demands = {n: default_demand for n in unique_targets}
+    if demands:
+        for n, v in demands.items():
+            if n in node_demands:
+                node_demands[n] = float(v)
+    total_demand = sum(node_demands.values())
+    penalty_capacity = max(0.0, total_demand - capacity) if capacity is not None else 0.0
+    penalty_time = max(0.0, total_time - max_operation_time) if max_operation_time is not None else 0.0
+    penalty_total = (
+        penalty_alpha * penalty_window
+        + penalty_beta * penalty_capacity
+        + penalty_gamma * penalty_time
+    )
+    objective_cost = lambda_weight * total_distance + mu_weight * penalty_total
+
+    full_path: List[Any] = []
+    tour_legs: List[Dict[str, Any]] = []
+    for a, b in zip(order, order[1:]):
+        leg = spaths[(a, b)]
+        if full_path:
+            leg = leg[1:]
+        full_path.extend(leg)
+        tour_legs.append({"from": a, "to": b, "distance": dist[(a, b)], "path": spaths[(a, b)]})
+
+    pairwise = [{"from": a, "to": b, "distance": d} for (a, b), d in dist.items()]
+
+    metrics = {
+        "distance_total": total_distance,
+        "penalty_total": penalty_total,
+        "penalty_window": penalty_window,
+        "penalty_capacity": penalty_capacity,
+        "penalty_time": penalty_time,
+        "objective_cost": objective_cost,
+        "total_time": total_time,
+        "total_demand": total_demand,
+        "capacity": capacity,
+        "max_operation_time": max_operation_time,
+        "time_model": {
+            "time_factor": time_factor,
+            "min_travel_minutes": min_travel_minutes,
+            "length_speed_kph": length_speed_kph,
+        },
+        "penalty_weights": {
+            "alpha": penalty_alpha,
+            "beta": penalty_beta,
+            "gamma": penalty_gamma,
+        },
+        "objective_weights": {
+            "lambda": lambda_weight,
+            "mu": mu_weight,
+        },
+    }
+
+    return order, objective_cost, [objective_cost], full_path, pairwise, tour_legs, arrival_log, metrics
+
+
+def greedy_tour_through_nodes(
+    G: nx.MultiDiGraph,
+    start: Any,
+    targets: List[Any],
+    weight: str = "street_time",
+    start_time: int = 10*60,
+    time_windows: Optional[Dict[Any, Tuple[int, int]]] = None,
+    unload_time: int = 10,
+    demands: Optional[Dict[Any, float]] = None,
+    default_demand: float = 1.0,
+    capacity: Optional[float] = None,
+    max_operation_time: Optional[float] = None,
+    penalty_weights: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+    objective_weights: Tuple[float, float] = (1.0, 1.0),
+    time_factor: float = 5.0,
+    min_travel_minutes: float = 1.5,
+    length_speed_kph: float = 18.0,
+) -> Tuple[
+    Optional[List[Any]],
+    float,
+    List[float],
+    List[Any],
+    List[Dict[str, Any]],
+    List[Dict[str, Any]],
+    List[Dict[str, Any]],
+    Dict[str, Any],
+]:
+    if start not in G:
+        raise ValueError("El nodo de inicio no existe en el grafo")
+    unique_targets = [t for t in dict.fromkeys(targets) if t != start]
+    if not unique_targets:
+        raise ValueError("Se necesita al menos una heladería destino")
+    nodes = [start] + unique_targets
+
+    dist, spaths = compute_dist_matrix(G, nodes, weight)
+
+    order = [start]
+    unvisited = set(unique_targets)
+    while unvisited:
+        current = order[-1]
+        nxt = min(unvisited, key=lambda cand: dist[(current, cand)])
+        order.append(nxt)
+        unvisited.remove(nxt)
+    order.append(start)
+
+    total_distance, penalty_window, total_time, arrival_log = evaluate_tour_path(
+        order=order,
+        start_time=start_time,
+        unload_time=unload_time,
+        time_windows=time_windows,
+        dist=dist,
+        weight=weight,
+        time_factor=time_factor,
+        min_travel_minutes=min_travel_minutes,
+        length_speed_kph=length_speed_kph,
+    )
+
+    penalty_alpha, penalty_beta, penalty_gamma = penalty_weights
+    lambda_weight, mu_weight = objective_weights
+    node_demands = {n: default_demand for n in unique_targets}
+    if demands:
+        for n, v in demands.items():
+            if n in node_demands:
+                node_demands[n] = float(v)
+    total_demand = sum(node_demands.values())
+    penalty_capacity = max(0.0, total_demand - capacity) if capacity is not None else 0.0
+    penalty_time = max(0.0, total_time - max_operation_time) if max_operation_time is not None else 0.0
+    penalty_total = (
+        penalty_alpha * penalty_window
+        + penalty_beta * penalty_capacity
+        + penalty_gamma * penalty_time
+    )
+    objective_cost = lambda_weight * total_distance + mu_weight * penalty_total
+
+    full_path: List[Any] = []
+    tour_legs: List[Dict[str, Any]] = []
+    for a, b in zip(order, order[1:]):
+        leg = spaths[(a, b)]
+        if full_path:
+            leg = leg[1:]
+        full_path.extend(leg)
+        tour_legs.append({"from": a, "to": b, "distance": dist[(a, b)], "path": spaths[(a, b)]})
+
+    pairwise = [{"from": a, "to": b, "distance": d} for (a, b), d in dist.items()]
+
+    metrics = {
+        "distance_total": total_distance,
+        "penalty_total": penalty_total,
+        "penalty_window": penalty_window,
+        "penalty_capacity": penalty_capacity,
+        "penalty_time": penalty_time,
+        "objective_cost": objective_cost,
+        "total_time": total_time,
+        "total_demand": total_demand,
+        "capacity": capacity,
+        "max_operation_time": max_operation_time,
+        "time_model": {
+            "time_factor": time_factor,
+            "min_travel_minutes": min_travel_minutes,
+            "length_speed_kph": length_speed_kph,
+        },
+        "penalty_weights": {
+            "alpha": penalty_alpha,
+            "beta": penalty_beta,
+            "gamma": penalty_gamma,
+        },
+        "objective_weights": {
+            "lambda": lambda_weight,
+            "mu": mu_weight,
+        },
+    }
+
+    return order, objective_cost, [objective_cost], full_path, pairwise, tour_legs, arrival_log, metrics

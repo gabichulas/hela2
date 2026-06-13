@@ -20,7 +20,11 @@ if str(ROOT) not in sys.path:
 
 from src.core.graph import get_graph_by_city, get_graph_by_point
 from src.core.osm import get_ice_cream_places
-from src.core.algorithms import aco_tour_through_nodes
+from src.core.algorithms import (
+    aco_tour_through_nodes,
+    random_tour_through_nodes,
+    greedy_tour_through_nodes,
+)
 
 
 @dataclass(frozen=True)
@@ -204,7 +208,14 @@ def build_configs() -> List[Config]:
         Config(**{**time_base.__dict__, "name": "street_time_rho0.7", "rho": 0.7}),
     ]
 
-    configs = length_configs + street_time_configs
+    baselines = [
+        Config(**{**base.__dict__, "name": "random_length_base", "weight": "length"}),
+        Config(**{**base.__dict__, "name": "random_street_time_base", "weight": "street_time"}),
+        Config(**{**base.__dict__, "name": "greedy_length_base", "weight": "length"}),
+        Config(**{**base.__dict__, "name": "greedy_street_time_base", "weight": "street_time"}),
+    ]
+
+    configs = length_configs + street_time_configs + baselines
 
     return configs
 
@@ -250,36 +261,96 @@ def run_experiments(
                 t0 = time.perf_counter()
 
                 try:
-                    (
-                        cost,
-                        history,
-                        arrival_log,
-                        metrics,
-                    ) = aco_tour_through_nodes(
-                        G,
-                        start=origin_node,
-                        targets=targets,
-                        weight=c.weight,
-                        start_time=start_time,
-                        time_windows=tw,
-                        unload_time=c.unload_time,
-                        n_ants=c.n_ants,
-                        n_iters=c.n_iters,
-                        alpha=c.alpha,
-                        beta=c.beta,
-                        gamma=c.gamma,
-                        rho=c.rho,
-                        q=c.q,
-                        seed=algo_seed,
-                        default_demand=c.default_demand,
-                        capacity=c.capacity,
-                        max_operation_time=c.max_operation_time,
-                        penalty_weights=(c.penalty_alpha, c.penalty_beta, c.penalty_gamma),
-                        objective_weights=(c.lambda_weight, c.mu_weight),
-                        time_factor=c.time_factor,
-                        min_travel_minutes=c.min_travel_minutes,
-                        length_speed_kph=c.length_speed_kph,
-                    )
+                    if c.name.startswith("random"):
+                        (
+                            _,
+                            cost,
+                            history,
+                            _,
+                            _,
+                            _,
+                            arrival_log,
+                            metrics,
+                        ) = random_tour_through_nodes(
+                            G,
+                            start=origin_node,
+                            targets=targets,
+                            weight=c.weight,
+                            start_time=start_time,
+                            time_windows=tw,
+                            unload_time=c.unload_time,
+                            seed=algo_seed,
+                            default_demand=c.default_demand,
+                            capacity=c.capacity,
+                            max_operation_time=c.max_operation_time,
+                            penalty_weights=(c.penalty_alpha, c.penalty_beta, c.penalty_gamma),
+                            objective_weights=(c.lambda_weight, c.mu_weight),
+                            time_factor=c.time_factor,
+                            min_travel_minutes=c.min_travel_minutes,
+                            length_speed_kph=c.length_speed_kph,
+                        )
+                    elif c.name.startswith("greedy"):
+                        (
+                            _,
+                            cost,
+                            history,
+                            _,
+                            _,
+                            _,
+                            arrival_log,
+                            metrics,
+                        ) = greedy_tour_through_nodes(
+                            G,
+                            start=origin_node,
+                            targets=targets,
+                            weight=c.weight,
+                            start_time=start_time,
+                            time_windows=tw,
+                            unload_time=c.unload_time,
+                            default_demand=c.default_demand,
+                            capacity=c.capacity,
+                            max_operation_time=c.max_operation_time,
+                            penalty_weights=(c.penalty_alpha, c.penalty_beta, c.penalty_gamma),
+                            objective_weights=(c.lambda_weight, c.mu_weight),
+                            time_factor=c.time_factor,
+                            min_travel_minutes=c.min_travel_minutes,
+                            length_speed_kph=c.length_speed_kph,
+                        )
+                    else:
+                        (
+                            _,
+                            cost,
+                            history,
+                            _,
+                            _,
+                            _,
+                            arrival_log,
+                            metrics,
+                        ) = aco_tour_through_nodes(
+                            G,
+                            start=origin_node,
+                            targets=targets,
+                            weight=c.weight,
+                            start_time=start_time,
+                            time_windows=tw,
+                            unload_time=c.unload_time,
+                            n_ants=c.n_ants,
+                            n_iters=c.n_iters,
+                            alpha=c.alpha,
+                            beta=c.beta,
+                            gamma=c.gamma,
+                            rho=c.rho,
+                            q=c.q,
+                            seed=algo_seed,
+                            default_demand=c.default_demand,
+                            capacity=c.capacity,
+                            max_operation_time=c.max_operation_time,
+                            penalty_weights=(c.penalty_alpha, c.penalty_beta, c.penalty_gamma),
+                            objective_weights=(c.lambda_weight, c.mu_weight),
+                            time_factor=c.time_factor,
+                            min_travel_minutes=c.min_travel_minutes,
+                            length_speed_kph=c.length_speed_kph,
+                        )
 
                     elapsed = time.perf_counter() - t0
                     pct_on_time, on_time, early, late = summarize_arrival(arrival_log)
