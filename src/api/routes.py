@@ -42,7 +42,7 @@ def project_and_nearest_node(G, lon: float, lat: float) -> int:
 
 
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 
 def build_graph(

@@ -20,7 +20,14 @@ def get_ice_cream_places(
     ox.settings.use_cache = True
     ox.settings.cache_folder = cache_dir
 
-    gdf = ox.features_from_point((lat, lon), tags={"amenity": "ice_cream"}, dist=radius)
+    try:
+        gdf = ox.features_from_point((lat, lon), tags={"amenity": "ice_cream"}, dist=radius)
+    except Exception as e:
+        if "No matching features" in str(e) or "InsufficientResponseError" in type(e).__name__:
+            gdf = pd.DataFrame()
+        else:
+            raise e
+
     if gdf.empty:
         return pd.DataFrame(columns=["osmid", "name", "lat", "lon", "addr:street", "addr:housenumber", "amenity"])
 
@@ -33,5 +40,5 @@ def get_ice_cream_places(
         if col not in df.columns:
             df[col] = None
     df = df[cols]
-    df = df.where(pd.notnull(df), None)
+    df = df.astype(object).where(pd.notnull(df), None)
     return df
