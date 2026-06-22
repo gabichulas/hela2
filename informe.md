@@ -288,13 +288,15 @@ Para poder comparar los resultados obtenidos, se decidió tomar como baseline do
 
 El rendimiento de la metaheurística propuesta se evaluó de forma empírica contrastando el comportamiento de ACO configurado en su versión base (`length_base` y `street_time_base`, con parámetros `alpha=1`, `beta=2`, `rho=0.5`, `q=100`) y en sus mejores configuraciones paramétricas, frente a los dos baselines presentados anteriormente. Las pruebas de simulación se desarrollaron sobre tres escenarios de distribución en Mendoza, Argentina. Los resultados presentados a continuación corresponden al valor de la mediana obtenido sobre 10 ejecuciones independientes.
 
-La nomenclatura de las configuraciones se estructura de la siguiente forma:
+> [!NOTE]
+> La nomenclatura de las configuraciones se estructura de la siguiente forma:
+> 
+> - `{weight}_{variation}`
+> 
+> Cada configuración tiene solo una variación en uno de los parámetros con respecto a la configuración base (descrita en el párrafo anterior). Por ejemplo:
+> 
+> - `length_rho0.3` $\rightarrow$ igual a `length_base`, pero con `rho=0.3` en lugar de `rho=0.5`.
 
-- {weight}_{variation}
-
-Cada configuración tiene solo una variación en uno de los parámetros con respecto a la configuración base (descrita en el párrafo anterior). Por ejemplo:
-
-- length_rho0.3 -> igual a length_base, pero con `rho=0.3` en lugar de `rho=0.5`.
 
 A modo de ilustración de las salidas de la aplicación, las siguientes imágenes muestran la comparación entre el mapa base de heladerías geolocalizadas y la trayectoria real reconstruida sobre la red de calles física para recorrer el tour óptimo calculado por el motor de ACO:
 
