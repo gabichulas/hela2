@@ -20,6 +20,8 @@ Código de proyecto: HELA2
 - [Resultados](#resultados)
 - [Conclusiones](#conclusiones)
 
+---
+
 ### <a id="introducción"></a>Introducción
 
 El presente informe describe una solución computacional a un problema de optimización logística para la distribución de helados de una empresa ficticia en una ciudad cualquiera. 
@@ -28,6 +30,7 @@ El problema consiste en encontrar una ruta óptima para un vehículo que parte d
 
 La solución implementa el algoritmo de optimización por colonia de hormigas (ACO) para resolver el Problema del Viajero con Ventanas de Tiempo (TSPTW).
 
+---
 
 ### <a id="marco-teórico"></a>Marco Teórico
 
@@ -67,6 +70,7 @@ Donde $\lambda$ y $\mu$ son coeficientes de ponderación, y $P_{\text{total}}$ e
 
 Esta formulación suavizada del TSPTW mantiene el carácter NP-Hard del problema original, pero expande el espacio de búsqueda permitiendo al algoritmo explorar de forma heurística soluciones subóptimas en términos de ventanas a cambio de una reducción sustancial en la distancia física recorrida.
 
+---
 
 #### <a id="aco"></a>Ant Colony Optimization (ACO)
 
@@ -106,7 +110,7 @@ El sistema implementa la variante **Max-Min Ant System (MMAS)** para guiar la b�
    $$\Delta\tau_{ij} = \frac{Q}{\text{Costo}_{\text{iter-best}}}$$
    Siendo $Q$ una constante de depósito del sistema.
 
-
+---
 
 #### <a id="penalizaciones"></a>Sistema de Penalizaciones
 
@@ -141,6 +145,7 @@ $$ \text{Costo}(R_k) = \lambda \cdot \text{Distancia Total} + \mu \cdot P_{\text
 
 Al incorporar las penalizaciones en la función objetivo, el sistema de ACO puede explorar trayectorias que, aunque físicamente más largas, resulten en un menor costo operativo global al minimizar las demoras, respetar las ventanas de tiempo y mantener la carga dentro de los límites del vehículo.
 
+---
 
 #### <a id="tech"></a>Tecnologías Utilizadas
 
@@ -154,6 +159,7 @@ Las herramientas y tecnologías utilizadas en el desarrollo de este proyecto son
 - SQLite (base de datos utilizada para cachear ciertos datos)
 - Pandas y Matplotlib (análisis y visualización de datos)
 
+---
 
 ### <a id="analisis"></a>Análisis del Problema
 
@@ -184,6 +190,7 @@ La siguiente figura ilustra la red vial urbana ($G$) descargada y proyectada par
 
 ![Red Vial y Heladerías Geolocalizadas en Mendoza](img/mapa_base_mendoza.png)
 
+---
 
 #### <a id="restricciones"></a>Restricciones del Dominio
 
@@ -197,6 +204,7 @@ Las tres restricciones existentes son:
 
 * **Jornada Laboral Máxima:** Establece el tiempo de operación máximo permitido para el vehículo y el conductor ($T_{\text{max}}$). El exceso de tiempo total de la ruta sobre este límite es penalizado a través de $P^J$. En este caso, en un escenario real, también podría considerarse como una restricción dura, pero podemos pensarlo como "horas extra" para el conductor.
 
+---
 
 ### <a id="diseño"></a>Diseño Experimental e Implementación
 
@@ -276,6 +284,8 @@ El procesamiento de una solicitud de optimización sigue un flujo síncrono que 
 
 5. Se genera la imagen final superponiendo la ruta urbana real y los marcadores de las heladerías en diferentes colores (verde para origen, rojo para entregas, violeta para retorno) sobre la cartografía de la ciudad.
 
+---
+
 #### <a id="baselines"></a>Baselines
 
 Para poder comparar los resultados obtenidos, se decidió tomar como baseline dos métodos de optimización:
@@ -283,6 +293,8 @@ Para poder comparar los resultados obtenidos, se decidió tomar como baseline do
 - Un algoritmo greedy que elige en cada paso la heladería más cercana a la actual.
 
 - Un agente random que selecciona aleatoriamente la siguiente heladería a visitar.
+
+---
 
 ### <a id="resultados"></a>Resultados
 
@@ -381,6 +393,8 @@ La distribución de costos muestra una alta sensibilidad frente a los coeficient
 ![Distribución de Costos en Escenario Grande E3](img/boxplot_cost_E3_length.png)
 
 
+---
+
 ### <a id="conclusiones"></a>Conclusiones
 
 La realización de este proyecto permite extraer las siguientes conclusiones:
@@ -392,4 +406,23 @@ La realización de este proyecto permite extraer las siguientes conclusiones:
 3. ACO demostró una clara ventaja frente a los baselines planteados, reduciendo el costo total hasta en un 16,0% en distancia y un 10,8% en tiempo de tránsito. El barrido y seleccion de los mejores parametros, especificamente reduciendo la persistencia de feromona ($\alpha = 0,8$) para evitar la convergencia prematura e incrementando la visibilidad local ($\beta = 2,5$), fue de gran utilidad para descubrir patrones y resolver el problema en entornos de alta saturación y ventanas de tiempo estrictas.
 
 
+---
+
+### <a id="referencias"></a>Referencias
+
+1. **Basso, F., D'Amours, S., Rönnqvist, M., & Weintraub, A. (2019).** *A survey on vehicle routing problems with time windows and real-world constraints*. European Journal of Operational Research, 275(1), 1-17. [https://doi.org/10.1016/j.ejor.2018.08.034](https://doi.org/10.1016/j.ejor.2018.08.034)
+
+2. **Bast, H., Delling, D., Goldberg, A., Müller-Hannemann, M., Pajor, T., Sanders, P., Wagner, D., & Werneck, R. F. (2016).** *Route Planning in Transportation Networks*. In: Kliemann, L., Sanders, P. (eds) Algorithm Engineering. Lecture Notes in Computer Science, vol 9220. Springer, Cham. [https://doi.org/10.1007/978-3-319-49487-6_2](https://doi.org/10.1007/978-3-319-49487-6_2)
+
+3. **Boeing, G. (2017).** *OSMnx: New methods for acquiring, constructing, analyzing, and visualizing complex street networks*. Computers, Environment and Urban Systems, 65, 126-139. [https://doi.org/10.1016/j.compenvurbsys.2017.05.004](https://doi.org/10.1016/j.compenvurbsys.2017.05.004)
+
+4. **Dijkstra, E. W. (1959).** *A note on two problems in connexion with graphs*. Numerische Mathematik, 1(1), 269-271. [https://doi.org/10.1007/BF01386390](https://doi.org/10.1007/BF01386390)
+
+5. **Dorigo, M., & Stützle, T. (2004).** *Ant Colony Optimization*. MIT Press. ISBN: 9780262042192.
+
+6. **Mancini, S. (2016).** *A real-life vehicle routing problem with time windows and temporal urgency in city logistics*. Transportation Research Part C: Emerging Technologies, 70, 240-255. [https://doi.org/10.1016/j.trc.2015.06.017](https://doi.org/10.1016/j.trc.2015.06.017)
+
+7. **Solomon, M. M. (1987).** *Algorithms for the vehicle routing and scheduling problems with time window constraints*. Operations Research, 35(2), 254-265. [https://doi.org/10.1287/opre.35.2.254](https://doi.org/10.1287/opre.35.2.254)
+
+8. **Stützle, T., & Hoos, H. H. (2000).** *MAX-MIN Ant System*. Future Generation Computer Systems, 16(8), 889-914. [https://doi.org/10.1016/S0167-739X(99)00150-X](https://doi.org/10.1016/S0167-739X(99)00150-X)
 
