@@ -100,10 +100,10 @@ El sistema implementa la variante **Max-Min Ant System (MMAS)** para guiar la b�
 
 - Al finalizar cada iteración, el nivel de feromona en todos los arcos se evapora a una tasa $\rho \in (0, 1]$:
    $$\tau_{ij} \leftarrow \max\left(\tau_{\min}, (1 - \rho) \cdot \tau_{ij}\right)$$
-- Únicamente la hormiga que construyó el recorrido de menor costo en la iteración actual ($\text{Costo}_{\text{iter\_best}}$) deposita feromona en los arcos de su ruta:
-   $$\tau_{ij} \leftarrow \min\left(\tau_{\max}, \tau_{ij} + \Delta\tau_{ij}\right) \quad \forall (i, j) \in R_{\text{iter\_best}}$$
+- Únicamente la hormiga que construyó el recorrido de menor costo en la iteración actual ($\text{Costo}_{\text{iter-best}}$) deposita feromona en los arcos de su ruta:
+   $$\tau_{ij} \leftarrow \min\left(\tau_{\max}, \tau_{ij} + \Delta\tau_{ij}\right) \quad \forall (i, j) \in R_{\text{iter-best}}$$
    Donde el depósito es inversamente proporcional a la calidad de la solución encontrada:
-   $$\Delta\tau_{ij} = \frac{Q}{\text{Costo}_{\text{iter\_best}}}$$
+   $$\Delta\tau_{ij} = \frac{Q}{\text{Costo}_{\text{iter-best}}}$$
    Siendo $Q$ una constante de depósito del sistema.
 
 
