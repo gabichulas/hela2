@@ -10,6 +10,7 @@ Código de proyecto: HELA2
   - [Problema del Viajero con Ventanas de Tiempo (TSPTW)](#tsptw)
   - [Ant Colony Optimization (ACO)](#aco)
   - [Sistema de Penalizaciones](#penalizaciones)
+  - [Comparativa del Modelo](#comparativa)
   - [Tecnologías Utilizadas](#tech)
 - [Análisis del Problema](#analisis)
   - [Modelado y Ponderación de la Red Vial](#modelado)
@@ -36,11 +37,11 @@ La solución implementa el algoritmo de optimización por colonia de hormigas (A
 
 #### <a id="tsptw"></a>Problema del Viajero con Ventanas de Tiempo (TSPTW)
 
-El Problema del Viajero (TSP, por sus siglas en inglés: *Traveling Salesperson Problem*) es uno de los problemas de optimización combinatoria y teoría de grafos más estudiados en las ciencias de la computación. Su objetivo consiste en encontrar la ruta más corta posible que visite un conjunto de ubicaciones exactamente una vez y regrese al punto de origen.
+El Problema del Viajero (TSP, por sus siglas en inglés: *Traveling Salesperson Problem*) es uno de los problemas de optimización combinatoria y teoría de grafos más estudiados en las ciencias de la computación [5]. Su objetivo consiste en encontrar la ruta más corta posible que visite un conjunto de ubicaciones exactamente una vez y regrese al punto de origen.
 
 Desde la perspectiva de la teoría de la complejidad, el TSP clásico pertenece a la clase **NP-Hard**. Esto significa que es al menos tan difícil como los problemas más complejos de la clase NP y que, por lo tanto, no se conoce un algoritmo capaz de resolverlo en tiempo polinomial en el peor de los casos. A medida que el número de ubicaciones ($n$) crece, el espacio de soluciones posibles aumenta de forma factorial.
 
-En este proyecto, el TSP convencional se ve modificado por la incorporación de restricciones temporales asociadas a cada nodo, lo que transforma el modelo en el **Problema del Viajero con Ventanas de Tiempo (TSPTW)**. 
+En este proyecto, el TSP convencional se ve modificado por la incorporación de restricciones temporales asociadas a cada nodo, lo que transforma el modelo en el **Problema del Viajero con Ventanas de Tiempo (TSPTW)** [7]. 
 
 Para modelar formalmente este escenario sobre la red vial real, se calcula la matriz de caminos mínimos entre todos los puntos clave. Esto permite representar el problema mediante un grafo dirigido completo virtual (ya que el grafo inicial no es un grafo completo) definido como $G = (V, A)$, donde:
 
@@ -74,7 +75,7 @@ Esta formulación suavizada del TSPTW mantiene el carácter NP-Hard del problema
 
 #### <a id="aco"></a>Ant Colony Optimization (ACO)
 
-El algoritmo de optimización por colonia de hormigas (ACO) es una metaheurística estocástica inspirada en el comportamiento de las hormigas reales que buscan el camino más corto entre su nido y una fuente de alimento. Este enfoque se enmarca dentro de la categoría de métodos de optimización basados en enjambres (swarm intelligence), diseñados para resolver problemas de optimización combinatoria complejos.
+El algoritmo de optimización por colonia de hormigas (ACO) es una metaheurística estocástica inspirada en el comportamiento de las hormigas reales que buscan el camino más corto entre su nido y una fuente de alimento [5]. Este enfoque se enmarca dentro de la categoría de métodos de optimización basados en enjambres (swarm intelligence), diseñados para resolver problemas de optimización combinatoria complejos.
 
 Estando una hormiga artificial $k$ en el nodo $i$, la selección probabilística de la siguiente heladería a visitar $j$, perteneciente al conjunto de destinos no visitados $\text{Allowed}_k$, se calcula mediante una regla de transición pseudo-proporcional que balancea tres factores esenciales:
 
@@ -100,7 +101,7 @@ Esta formulación desincentiva la llegada temprana asignando un factor menor con
 
 ##### Reglas de Actualización de Feromonas en MMAS
 
-El sistema implementa la variante **Max-Min Ant System (MMAS)** para guiar la búsqueda y evitar el estancamiento en óptimos locales mediante cotas extremas $[\tau_{\min}, \tau_{\max}]$:
+El sistema implementa la variante **Max-Min Ant System (MMAS)** [8] para guiar la búsqueda y evitar el estancamiento en óptimos locales mediante cotas extremas $[\tau_{\min}, \tau_{\max}]$:
 
 - Al finalizar cada iteración, el nivel de feromona en todos los arcos se evapora a una tasa $\rho \in (0, 1]$:
    $$\tau_{ij} \leftarrow \max\left(\tau_{\min}, (1 - \rho) \cdot \tau_{ij}\right)$$
@@ -145,6 +146,15 @@ $$ \text{Costo}(R_k) = \lambda \cdot \text{Distancia Total} + \mu \cdot P_{\text
 
 Al incorporar las penalizaciones en la función objetivo, el sistema de ACO puede explorar trayectorias que, aunque físicamente más largas, resulten en un menor costo operativo global al minimizar las demoras, respetar las ventanas de tiempo y mantener la carga dentro de los límites del vehículo.
 
+#### <a id="comparativa"></a>Comparativa del Modelo
+
+Para comprender la ubicación teórica de la solución desarrollada en este proyecto dentro del campo de la investigación operativa, es necesario distinguir formalmente entre los distintos modelos clásicos de ruteo y el modelo híbrido implementado en el sistema HELA2:
+
+* **Traveling Salesperson Problem (TSP) [5]:** El modelo más simple de ruteo. Consta de un único vehículo sin capacidad máxima y con la obligación de visitar un conjunto de nodos minimizando únicamente la distancia o el tiempo de trayecto, libre de cualquier restricción temporal o de carga.
+* **Traveling Salesperson Problem with Time Windows (TSPTW) [7]:** Extiende el TSP introduciendo ventanas horarias $[e_i, l_i]$ específicas para cada nodo. Tradicionalmente, este modelo impone restricciones duras, donde cualquier desviación es considerada estrictamente no factible, invalidando la solución.
+* **Vehicle Routing Problem with Time Windows (VRPTW) [1]:** Generaliza el problema hacia múltiples vehículos que parten de un depósito central y atienden un conjunto de demandas respetando ventanas horarias de clientes y límites de capacidad física de carga ($C$) del vehículo de forma simultánea.
+* **Modelo Implementado en HELA2:** Se clasifica conceptualmente como un **TSPTW Generalizado con Ventanas de Tiempo Blandas y Penalizaciones**. Es un problema monovehículo (como el TSPTW), pero suaviza el cumplimiento de ventanas temporales permitiendo entregas fuera de término a cambio de penalizaciones matemáticas en la función objetivo, adaptando aproximaciones dinámicas de la logística urbana moderna [6].
+
 ---
 
 #### <a id="tech"></a>Tecnologías Utilizadas
@@ -184,11 +194,11 @@ Donde:
 
 * **$v_{\text{max}}$** es la velocidad máxima de la calle permitida en km/h. Se divide por $3.6$ para convertir el valor a metros por segundo ($m/s$), logrando que el tiempo resultante ($t_{\text{street}}$) se exprese en segundos.
 
-Dado que la red vial real extraída de OpenStreetMap no siempre cuenta con información explícita de límites de velocidad para cada tramo, se implementó la función [`_ensure_street_time`](src/core/graph.py#L22) que, en una primera instancia, intenta obtener el valor del atributo `maxspeed`. Si no existe, se infiere a partir de [`SPEED_DEFAULTS`](src/core/graph.py#L9), que asigna valores arbitrarios en base al tipo de calle.
+Dado que la red vial real extraída de OpenStreetMap no siempre cuenta con información explícita de límites de velocidad para cada tramo, se implementó la función [`_ensure_street_time`](../src/core/graph.py#L22) que, en una primera instancia, intenta obtener el valor del atributo `maxspeed`. Si no existe, se infiere a partir de [`SPEED_DEFAULTS`](../src/core/graph.py#L9), que asigna valores arbitrarios en base al tipo de calle. La descarga y estructuración del grafo de la red vial se realiza mediante la librería `OSMnx` [3].
 
 La siguiente figura ilustra la red vial urbana ($G$) descargada y proyectada para un radio de $1000\text{ metros}$ en torno a la Plaza Independencia de Mendoza, marcando en rojo la localización geográfica de las heladerías (puntos de interés) que conforman el conjunto $V'$:
 
-![Red Vial y Heladerías Geolocalizadas en Mendoza](img/mapa_base_mendoza.png)
+![Red Vial y Heladerías Geolocalizadas en Mendoza](../img/mapa_base_mendoza.png)
 
 ---
 
@@ -216,13 +226,13 @@ La implementación de la solución propuesta se rige por un diseño estructurado
 
 El sistema se compone de cinco capas principales que interactúan de forma lineal para resolver peticiones de optimización en tiempo real:
 
-1. **UI:** Compuesto por una interfaz web responsiva ([index.html](src/templates/index.html)) escrita en HTML5 y JavaScript. Gestiona la captura de parámetros (ubicaciones, pesos, coeficientes de optimización) y despliega dinámicamente los mapas y registros de arribos devueltos por el backend.
+1. **UI:** Compuesto por una interfaz web responsiva ([index.html](../src/templates/index.html)) escrita en HTML5 y JavaScript. Gestiona la captura de parámetros (ubicaciones, pesos, coeficientes de optimización) y despliega dinámicamente los mapas y registros de arribos devueltos por el backend.
 
-2. **API:** Consiste en la API expuesta por **FastAPI** ([routes.py](src/api/routes.py)), la cual orquesta el flujo de ejecución del sistema.
+2. **API:** Consiste en la API expuesta por **FastAPI** ([routes.py](../src/api/routes.py)), la cual orquesta el flujo de ejecución del sistema.
 
-3. **Core:** Constituye el núcleo conceptual de la aplicación. Incluye la descarga y limpieza de grafos viales ([graph.py](src/core/graph.py)), la consulta de heladerías objetivo ([osm.py](src/core/osm.py)), transformaciones geométricas y cálculo de distancias ([geometry.py](src/core/geometry.py)), el algoritmo ([algorithms.py](src/core/algorithms.py)), y el motor gráfico de renderizado de rutas ([renders.py](src/visualization/renders.py)).
+3. **Core:** Constituye el núcleo conceptual de la aplicación. Incluye la descarga y limpieza de grafos viales ([graph.py](../src/core/graph.py)), la consulta de heladerías objetivo ([osm.py](../src/core/osm.py)), transformaciones geométricas y cálculo de distancias ([geometry.py](../src/core/geometry.py)), el algoritmo ([algorithms.py](../src/core/algorithms.py)), y el motor gráfico de renderizado de rutas ([renders.py](../src/visualization/renders.py)).
 
-4. **DB:** Administra el almacenamiento persistente estructurado de centros de distribución en SQLite mediante **SQLModel** ([database.py](src/models/database.py)) y la retención local no volátil de la topología de ciudades en formato Pickle en el directorio `cache/`.
+4. **DB:** Administra el almacenamiento persistente estructurado de centros de distribución en SQLite mediante **SQLModel** ([database.py](../src/models/database.py)) y la retención local no volátil de la topología de ciudades en formato Pickle en el directorio `cache/`.
 
 
 A continuación, se ilustra la topología de dependencias e intercambio de datos del sistema:
@@ -256,13 +266,11 @@ graph TD
 
 ##### Abstracción y Virtualización del Grafo
 
-Una de las decisiones de diseño arquitectónico más críticas es la *virtualización del grafo vial*. La red vial real obtenida desde OpenStreetMap es un multígrafo dirigido disperso $G = (V, A)$, donde el número de nodos es masivo ($|V| \sim 10^3 - 10^5$). Navegar este grafo físico directamente durante la toma de decisiones estocásticas de los agentes implicaría un costo computacional inviable.
-
-Para mitigar esto, el sistema implementa un paso de reducción de dimensionalidad en la capa de datos viales previo a la optimización:
+Una de las decisiones de diseño arquitectónico más críticas es la *virtualización del grafo vial*. La red vial real obtenida desde OpenStreetMap es un multígrafo dirigido disperso $G = (V, A)$, donde el número de nodos es masivo ($|V| \sim 10^3 - 10^5$). Navegar este grafo físico directamente durante la toma de decisiones estocásticas de los agentes implicaría un costo computacional inviable. Para mitigar esto, el sistema implementa un paso de reducción de dimensionalidad y abstracción topológica en la capa de datos viales previo a la optimización [2]:
 
 1. Se define un subconjunto de nodos de interés $V' = \{v_0, v_1, \dots, v_m\} \subset V$, donde $v_0$ representa el nodo proyectado del depósito central y $\{v_1, \dots, v_m\}$ son los nodos correspondientes a las heladerías.
 
-2. Para cada par ordenado $(i, j)$ con $i, j \in V', i \neq j$, se calcula el camino mínimo y su coste respectivo sobre $G$ empleando el algoritmo de Dijkstra:
+2. Para cada par ordenado $(i, j)$ con $i, j \in V', i \neq j$, se calcula el camino mínimo y su coste respectivo sobre $G$ empleando el algoritmo de Dijkstra [4]:
 
    $$d_{ij} = \text{Dijkstra}(G, i, j, \text{weight})$$
 
@@ -280,7 +288,7 @@ El procesamiento de una solicitud de optimización sigue un flujo síncrono que 
 
 3. Se inicializan las variables del problema y se transfieren al resolvedor algorítmico junto con la seed aleatoria del sistema.
 
-4. Se invoca la ejecución del resolvedor correspondiente en [algorithms.py](src/core/algorithms.py).
+4. Se invoca la ejecución del resolvedor correspondiente en [algorithms.py](../src/core/algorithms.py).
 
 5. Se genera la imagen final superponiendo la ruta urbana real y los marcadores de las heladerías en diferentes colores (verde para origen, rojo para entregas, violeta para retorno) sobre la cartografía de la ciudad.
 
@@ -314,7 +322,7 @@ A modo de ilustración de las salidas de la aplicación, las siguientes imágene
 
 | Red Vial y Heladerías | Ruta Construida |
 | :---: | :---: |
-| ![Grafo Base Mendoza](img/mapa_base_mendoza.png) | ![Ruta Óptima ACO Mendoza](img/mapa_ruta_aco.png) |
+| ![Grafo Base Mendoza](../img/mapa_base_mendoza.png) | ![Ruta Óptima ACO Mendoza](../img/mapa_ruta_aco.png) |
 
 ##### `weight = length`
 
@@ -369,7 +377,7 @@ El análisis de los tiempos de cómputo revela el comportamiento clásico de la 
 
 A pesar del incremento de tiempo de CPU, es fundamental notar que el algoritmo ACO resuelve instancias de hasta 20 heladerías en **menos de 1 segundo**. Desde una perspectiva logística en el mundo real, este tiempo es mas que valido.
 
-![boxplot exec time](img/boxplot_exec_s.png)
+![boxplot exec time](../img/boxplot_exec_s.png)
 
 ###### B. Diferencias en Puntualidad
 
@@ -379,7 +387,7 @@ Los experimentos revelan una discrepancia estructural en la calidad de la soluci
 
 2. En la optimización por **Tiempo de Viaje**, la escala de tiempo de tránsito en calles y las penalizaciones de retrasos guardan una proporción mucho más armónica. Esto fuerza al algoritmo a encontrar rutas balanceadas que reducen considerablemente las penalizaciones de entrega (ej. solo $90,5$ minutos de penalización en E3 frente a los $451,1$ minutos del modo distancia), logrando tasas de puntualidad significativamente superiores ($85,0\%$ frente a $70,0\%$).
 
-![Distribución de Entregas a Tiempo](img/boxplot_pct_on_time.png)
+![Distribución de Entregas a Tiempo](../img/boxplot_pct_on_time.png)
 
 ###### C. Sensibilidad e Impacto de Hiperparámetros
 
@@ -390,7 +398,7 @@ La distribución de costos muestra una alta sensibilidad frente a los coeficient
 
 * **Fuerte peso heurístico ($\beta = 2.5$):** En escenarios extensos de distancia, incrementar $\beta$ presiona a las hormigas a construir tours guiados fuertemente por la cercanía vial local de Dijkstra.
 
-![Distribución de Costos en Escenario Grande E3](img/boxplot_cost_E3_length.png)
+![Distribución de Costos en Escenario Grande E3](../img/boxplot_cost_E3_length.png)
 
 
 ---
@@ -410,19 +418,19 @@ La realización de este proyecto permite extraer las siguientes conclusiones:
 
 ### <a id="referencias"></a>Referencias
 
-1. **Basso, F., D'Amours, S., Rönnqvist, M., & Weintraub, A. (2019).** *A survey on vehicle routing problems with time windows and real-world constraints*. European Journal of Operational Research, 275(1), 1-17. [https://doi.org/10.1016/j.ejor.2018.08.034](https://doi.org/10.1016/j.ejor.2018.08.034)
+1. Basso, F., D'Amours, S., Rönnqvist, M., & Weintraub, A. (2019). A survey on vehicle routing problems with time windows and real-world constraints. *European Journal of Operational Research*, *275*(1), 1–17. [https://doi.org/10.1016/j.ejor.2018.08.034](https://doi.org/10.1016/j.ejor.2018.08.034)
 
-2. **Bast, H., Delling, D., Goldberg, A., Müller-Hannemann, M., Pajor, T., Sanders, P., Wagner, D., & Werneck, R. F. (2016).** *Route Planning in Transportation Networks*. In: Kliemann, L., Sanders, P. (eds) Algorithm Engineering. Lecture Notes in Computer Science, vol 9220. Springer, Cham. [https://doi.org/10.1007/978-3-319-49487-6_2](https://doi.org/10.1007/978-3-319-49487-6_2)
+2. Bast, H., Delling, D., Goldberg, A., Müller-Hannemann, M., Pajor, T., Sanders, P., Wagner, D., & Werneck, R. F. (2016). Route planning in transportation networks. In L. Kliemann & P. Sanders (Eds.), *Algorithm Engineering: Selected Results and Surveys* (pp. 19–80). Springer. [https://doi.org/10.1007/978-3-319-49487-6_2](https://doi.org/10.1007/978-3-319-49487-6_2)
 
-3. **Boeing, G. (2017).** *OSMnx: New methods for acquiring, constructing, analyzing, and visualizing complex street networks*. Computers, Environment and Urban Systems, 65, 126-139. [https://doi.org/10.1016/j.compenvurbsys.2017.05.004](https://doi.org/10.1016/j.compenvurbsys.2017.05.004)
+3. Boeing, G. (2017). OSMnx: New methods for acquiring, constructing, analyzing, and visualizing complex street networks. *Computers, Environment and Urban Systems*, *65*, 126–139. [https://doi.org/10.1016/j.compenvurbsys.2017.05.004](https://doi.org/10.1016/j.compenvurbsys.2017.05.004)
 
-4. **Dijkstra, E. W. (1959).** *A note on two problems in connexion with graphs*. Numerische Mathematik, 1(1), 269-271. [https://doi.org/10.1007/BF01386390](https://doi.org/10.1007/BF01386390)
+4. Dijkstra, E. W. (1959). A note on two problems in connexion with graphs. *Numerische Mathematik*, *1*(1), 269–271. [https://doi.org/10.1007/BF01386390](https://doi.org/10.1007/BF01386390)
 
-5. **Dorigo, M., & Stützle, T. (2004).** *Ant Colony Optimization*. MIT Press. ISBN: 9780262042192.
+5. Dorigo, M., & Stützle, T. (2004). *Ant colony optimization*. MIT Press. [https://doi.org/10.7551/mitpress/1290.001.0001](https://doi.org/10.7551/mitpress/1290.001.0001)
 
-6. **Mancini, S. (2016).** *A real-life vehicle routing problem with time windows and temporal urgency in city logistics*. Transportation Research Part C: Emerging Technologies, 70, 240-255. [https://doi.org/10.1016/j.trc.2015.06.017](https://doi.org/10.1016/j.trc.2015.06.017)
+6. Mancini, S. (2016). A real-life vehicle routing problem with time windows and temporal urgency in city logistics. *Transportation Research Part C: Emerging Technologies*, *70*, 240–255. [https://doi.org/10.1016/j.trc.2015.06.017](https://doi.org/10.1016/j.trc.2015.06.017)
 
-7. **Solomon, M. M. (1987).** *Algorithms for the vehicle routing and scheduling problems with time window constraints*. Operations Research, 35(2), 254-265. [https://doi.org/10.1287/opre.35.2.254](https://doi.org/10.1287/opre.35.2.254)
+7. Solomon, M. M. (1987). Algorithms for the vehicle routing and scheduling problems with time window constraints. *Operations Research*, *35*(2), 254–265. [https://doi.org/10.1287/opre.35.2.254](https://doi.org/10.1287/opre.35.2.254)
 
-8. **Stützle, T., & Hoos, H. H. (2000).** *MAX-MIN Ant System*. Future Generation Computer Systems, 16(8), 889-914. [https://doi.org/10.1016/S0167-739X(99)00150-X](https://doi.org/10.1016/S0167-739X(99)00150-X)
+8. Stützle, T., & Hoos, H. H. (2000). MAX-MIN Ant System. *Future Generation Computer Systems*, *16*(8), 889–914. [https://doi.org/10.1016/S0167-739X(99)00150-X](https://doi.org/10.1016/S0167-739X(99)00150-X)
 
