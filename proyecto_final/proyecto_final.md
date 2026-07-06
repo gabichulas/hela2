@@ -383,7 +383,7 @@ Con el fin de realizar un análisis de sensibilidad y sintonización, se efectu�
 
 Los experimentos se estructuraron sobre tres escenarios de distribución en Mendoza, Argentina, con complejidades geográficas y de escala viales crecientes:
 
-* **E1 (Pequeño):** Depósito y $10$ heladerías (clientes) distribuidas dentro de un radio de $900\text{ metros}$ en torno a la Plaza Independencia. Sirve para validar la respuesta básica y convergencia inicial de los resolvedores.
+* **E1 (Pequeño):** Depósito y $10$ heladerías distribuidas dentro de un radio de $900\text{ metros}$ en torno a la Plaza Independencia. Sirve para validar la respuesta básica y convergencia inicial de los resolvedores.
 * **E2 (Mediano):** Depósito y $14$ heladerías en un radio de $1200\text{ metros}$. Incrementa la densidad de clientes y solapamiento de ventanas.
 * **E3 (Grande):** Depósito y $20$ heladerías en un radio de $1800\text{ metros}$. Es la instancia más exigente, orientada a evaluar la robustez y escalamiento en presencia de alta dispersión y ventanas horarias estrictas.
 
