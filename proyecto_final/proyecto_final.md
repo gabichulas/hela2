@@ -410,18 +410,18 @@ A modo de ilustración de las salidas de la aplicación, en la **Figura 3** se m
 
 | Escenario | Algoritmo / Configuración | Costo Físico (m) | Costo con Penalizaciones | Entregas a Tiempo (%) | Penalización Temporal (min) | Tiempo de Ejecución (s) |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **E1: Pequeño**<br>(10 Clientes, Radio 900m) | Random | 10.686 [8.649 - 12.280] | 10.878 [8.825 - 12.576] | 80,0% [70,0% - 90,0%] | 0,0 [0,0 - 0,0] | 0,007 [0,006 - 0,007] |
-| | Greedy | 5.922 [5.922 - 5.922] | 6.046 [6.014 - 6.091] | 90,0% [80,0% - 90,0%] | 0,0 [0,0 - 0,0] | 0,006 [0,006 - 0,007] |
-| | Standard ACO | 5.444 [5.195 - 5.924] | 5.531 [5.293 - 5.997] | 80,0% [70,0% - 90,0%] | 0,0 [0,0 - 0,0] | 0,235 [0,225 - 0,241] |
-| | **Best ACO (`length_rho0.3`)** | **5.197 [5.195 - 5.922]** | **5.328 [5.261 - 6.038]** | **80,0% [60,0% - 90,0%]** | **0,0 [0,0 - 0,0]** | **0,231 [0,225 - 0,243]** |
-| **E2: Mediano**<br>(14 Clientes, Radio 1200m) | Random | 16.187 [14.556 - 19.519] | 16.441 [14.676 - 19.988] | 67,9% [50,0% - 78,6%] | 0,0 [0,0 - 0,0] | 0,017 [0,016 - 0,018] |
-| | Greedy | 9.611 [9.611 - 9.611] | 9.727 [9.655 - 9.886] | 85,7% [78,6% - 85,7%] | 0,0 [0,0 - 0,0] | 0,016 [0,016 - 0,018] |
-| | Standard ACO | 8.322 [8.031 - 9.071] | 8.560 [8.247 - 9.223] | 78,6% [71,4% - 85,7%] | 0,0 [0,0 - 0,0] | 0,439 [0,426 - 0,457] |
-| | **Best ACO (`length_ants40`)** | **8.071 [7.813 - 8.715]** | **8.244 [8.036 - 8.803]** | **82,1% [64,3% - 92,9%]** | **0,0 [0,0 - 0,0]** | **0,579 [0,555 - 0,595]** |
-| **E3: Grande**<br>(20 Clientes, Radio 1800m) | Random | 34.754 [30.620 - 36.480] | 37.742 [33.350 - 40.138] | 30,0% [25,0% - 45,0%] | 287,9 [207,8 - 323,6] | 0,069 [0,063 - 0,112] |
-| | Greedy | 15.346 [15.346 - 15.346] | 15.927 [15.705 - 16.193] | 62,5% [55,0% - 70,0%] | 0,0 [0,0 - 18,8] | 0,064 [0,062 - 0,129] |
-| | Standard ACO | 14.424 [13.497 - 15.685] | 14.984 [13.991 - 15.921] | 65,0% [55,0% - 70,0%] | 0,0 [0,0 - 0,0] | 0,899 [0,863 - 0,928] |
-| | **Best ACO (`length_beta2.5`)** | **14.038 [13.410 - 14.964]** | **14.520 [13.704 - 15.618]** | **70,0% [60,0% - 75,0%]** | **0,0 [0,0 - 0,0]** | **0,901 [0,854 - 0,921]** |
+| **E1: Pequeño**<br>(10 Clientes, Radio 900m) | Random | 10.686 [8.649 - 12.280] | 10.878 [8.825 - 12.576] | 80,0% [70,0% - 90,0%] | 176,9 [7,6 - 295,7] | 0,007 [0,006 - 0,007] |
+|  | Greedy | 5.922 [5.922 - 5.922] | 6.046 [6.014 - 6.091] | 90,0% [80,0% - 90,0%] | 123,9 [92,6 - 168,9] | 0,006 [0,006 - 0,007] |
+|  | Standard ACO | 5.444 [5.195 - 5.924] | 5.531 [5.293 - 5.997] | 80,0% [70,0% - 90,0%] | 102,7 [73,4 - 147,4] | 0,235 [0,225 - 0,241] |
+|  | **Best ACO (`length_rho0.3`)** | **5.197 [5.195 - 5.922]** | **5.328 [5.261 - 6.038]** | **80,0% [60,0% - 90,0%]** | **88,8 [53,9 - 142,7]** | **0,231 [0,225 - 0,243]** |
+| **E2: Mediano**<br>(14 Clientes, Radio 1200m) | Random | 16.187 [14.556 - 19.519] | 16.441 [14.676 - 19.988] | 67,9% [50,0% - 78,6%] | 264,3 [119,2 - 708,8] | 0,017 [0,016 - 0,018] |
+|  | Greedy | 9.611 [9.611 - 9.611] | 9.727 [9.655 - 9.886] | 85,7% [78,6% - 85,7%] | 115,3 [44,0 - 274,5] | 0,016 [0,016 - 0,018] |
+|  | Standard ACO | 8.322 [8.031 - 9.071] | 8.560 [8.247 - 9.223] | 78,6% [71,4% - 85,7%] | 184,2 [69,4 - 436,3] | 0,439 [0,426 - 0,457] |
+|  | **Best ACO (`length_ants40`)** | **8.071 [7.813 - 8.715]** | **8.244 [8.036 - 8.803]** | **82,1% [64,3% - 92,9%]** | **159,1 [88,3 - 299,1]** | **0,579 [0,555 - 0,595]** |
+| **E3: Grande**<br>(20 Clientes, Radio 1800m) | Random | 34.754 [30.620 - 36.480] | 37.742 [33.350 - 40.138] | 30,0% [25,0% - 45,0%] | 2.944,2 [1.756,8 - 3.459,1] | 0,069 [0,063 - 0,112] |
+|  | Greedy | 15.346 [15.346 - 15.346] | 15.927 [15.705 - 16.193] | 62,5% [55,0% - 70,0%] | 580,9 [358,9 - 827,6] | 0,064 [0,062 - 0,129] |
+|  | Standard ACO | 14.424 [13.497 - 15.685] | 14.984 [13.991 - 15.921] | 65,0% [55,0% - 70,0%] | 557,8 [235,5 - 1.047,4] | 0,899 [0,863 - 0,928] |
+|  | **Best ACO (`length_beta2.5`)** | **14.038 [13.410 - 14.964]** | **14.520 [13.704 - 15.618]** | **70,0% [60,0% - 75,0%]** | **451,2 [132,9 - 739,7]** | **0,901 [0,854 - 0,921]** |
 
 Los resultados muestran que en la optimización por distancia, el Standard ACO supera sistemáticamente a la heurística greedy, logrando reducciones del costo físico del 8,1% (E1), 13,4% (E2) y 6,0% (E3). 
 
@@ -433,18 +433,20 @@ Al introducir el barrido de parámetros, la mejor configuración paramétrica en
 
 | Escenario | Algoritmo / Configuración | Costo Físico (s) | Costo con Penalizaciones | Entregas a Tiempo (%) | Penalización Temporal (min) | Tiempo de Ejecución (s) |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **E1: Pequeño**<br>(10 Clientes, Radio 900m) | Random | 311 [231 - 341] | 1.027 [843 - 1.179] | 85,0% [70,0% - 90,0%] | 0,0 [0,0 - 0,0] | 0,006 [0,006 - 0,006] |
-| | Greedy | 269 [239 - 314] | 592 [562 - 637] | 90,0% [80,0% - 90,0%] | 0,0 [0,0 - 0,0] | 0,006 [0,006 - 0,006] |
-| | Standard ACO | 243 [218 - 269] | 582 [543 - 633] | 80,0% [70,0% - 90,0%] | 0,0 [0,0 - 0,0] | 0,216 [0,203 - 0,223] |
-| | **Best ACO (`street_time_alpha0.8`)** | **234 [220 - 292]** | **559 [527 - 609]** | **80,0% [60,0% - 90,0%]** | **0,0 [0,0 - 0,0]** | **0,215 [0,200 - 0,228]** |
-| **E2: Mediano**<br>(14 Clientes, Radio 1200m) | Random | 375 [326 - 418] | 1.486 [1.247 - 1.617] | 85,7% [71,4% - 92,9%] | 0,0 [0,0 - 0,0] | 0,016 [0,016 - 0,017] |
-| | Greedy | 326 [263 - 381] | 852 [790 - 907] | 85,7% [71,4% - 92,9%] | 0,0 [0,0 - 0,0] | 0,016 [0,016 - 0,017] |
-| | Standard ACO | 317 [260 - 370] | 832 [791 - 936] | 85,7% [78,6% - 92,9%] | 0,0 [0,0 - 0,0] | 0,407 [0,396 - 0,426] |
-| | **Best ACO (`street_time_alpha0.8`)** | **304 [266 - 325]** | **799 [765 - 861]** | **85,7% [71,4% - 92,9%]** | **0,0 [0,0 - 0,0]** | **0,407 [0,389 - 0,434]** |
-| **E3: Grande**<br>(20 Clientes, Radio 1800m) | Random | 550 [496 - 557] | 3.387 [2.789 - 3.885] | 62,5% [45,0% - 75,0%] | 0,0 [0,0 - 0,0] | 0,065 [0,062 - 0,125] |
-| | Greedy | 432 [404 - 477] | 1.475 [1.398 - 1.664] | 77,5% [75,0% - 95,0%] | 0,0 [0,0 - 0,0] | 0,067 [0,063 - 0,109] |
-| | Standard ACO | 394 [376 - 449] | 1.331 [1.257 - 1.464] | 85,0% [75,0% - 95,0%] | 0,0 [0,0 - 0,0] | 0,837 [0,801 - 0,893] |
-| | **Best ACO (`street_time_alpha0.8`)** | **392 [342 - 429]** | **1.315 [1.231 - 1.329]** | **85,0% [80,0% - 95,0%]** | **0,0 [0,0 - 0,0]** | **0,834 [0,817 - 0,902]** |
+| **E1: Pequeño**<br>(10 Clientes, Radio 900m) | Random | 311 [231 - 341] | 1.027,3 [843,1 - 1.178,9] | 85,0% [70,0% - 90,0%] | 135,9 [65,1 - 168,4] | 0,006 [0,006 - 0,006] |
+|  | Greedy | 269 [239 - 314] | 591,8 [561,8 - 636,8] | 90,0% [80,0% - 90,0%] | 128,9 [98,9 - 173,9] | 0,006 [0,006 - 0,006] |
+|  | Standard ACO | 243 [218 - 269] | 582,0 [542,6 - 633,2] | 80,0% [70,0% - 90,0%] | 102,8 [71,0 - 129,2] | 0,216 [0,203 - 0,223] |
+|  | **Best ACO (`street_time_alpha0.8`)** | **234 [220 - 292]** | **558,9 [527,0 - 609,3]** | **80,0% [60,0% - 90,0%]** | **93,5 [79,6 - 152,5]** | **0,215 [0,200 - 0,228]** |
+| **E2: Mediano**<br>(14 Clientes, Radio 1200m) | Random | 375 [326 - 418] | 1.486,1 [1.246,8 - 1.617,2] | 85,7% [71,4% - 92,9%] | 135,2 [90,2 - 227,3] | 0,016 [0,016 - 0,017] |
+|  | Greedy | 326 [263 - 381] | 852,4 [789,8 - 907,2] | 85,7% [71,4% - 92,9%] | 122,9 [60,3 - 177,7] | 0,016 [0,016 - 0,017] |
+|  | Standard ACO | 317 [260 - 370] | 832,3 [791,3 - 935,9] | 85,7% [78,6% - 92,9%] | 117,5 [56,2 - 163,7] | 0,407 [0,396 - 0,426] |
+|  | **Best ACO (`street_time_alpha0.8`)** | **304 [266 - 325]** | **799,0 [765,4 - 860,8]** | **85,7% [71,4% - 92,9%]** | **103,1 [65,2 - 121,9]** | **0,407 [0,389 - 0,434]** |
+| **E3: Grande**<br>(20 Clientes, Radio 1800m) | Random | 550 [496 - 557] | 3.386,9 [2.789,2 - 3.885,3] | 62,5% [45,0% - 75,0%] | 516,1 [344,1 - 956,6] | 0,065 [0,062 - 0,125] |
+|  | Greedy | 432 [404 - 477] | 1.475,2 [1.398,3 - 1.663,6] | 77,5% [75,0% - 95,0%] | 175,6 [98,7 - 364,0] | 0,067 [0,063 - 0,109] |
+|  | Standard ACO | 394 [376 - 449] | 1.330,7 [1.256,8 - 1.464,1] | 85,0% [75,0% - 95,0%] | 103,2 [65,3 - 216,5] | 0,837 [0,801 - 0,893] |
+|  | **Best ACO (`street_time_alpha0.8`)** | **392 [342 - 429]** | **1.314,8 [1.230,9 - 1.329,1]** | **85,0% [80,0% - 95,0%]** | **90,5 [34,9 - 168,3]** | **0,834 [0,817 - 0,902]** |
+
+Los resultados muestran que al optimizar por tiempo de viaje, el Standard ACO reduce el costo físico frente a la heurística greedy en un 9,7% (E1), 2,8% (E2) y 8,8% (E3). Al emplear el perfil calibrado (`Best ACO`), esta ventaja en el costo físico neto se incrementa al **13,0%** (E1), **6,7%** (E2) y **9,3%** (E3). Asimismo, Best ACO minimiza de forma muy superior el costo con penalizaciones consolidado, logrando reducciones frente a greedy del **5,6%** (E1), **6,3%** (E2) y **10,9%** (E3), lo que ratifica la efectividad de la sintonización para evitar penalizaciones temporales bajo ventanas estrictas.
 
 ### <a id="discusion"></a>Análisis y Discusión de Resultados
 
@@ -467,7 +469,7 @@ Los experimentos revelan una discrepancia estructural en la calidad de la soluci
 
 1. Cuando el `weight` es `length`, se genera un desbalance en la función objetivo (1 metro equivale a 1 minuto de penalización). La colonia prioriza acortar la ruta física y acepta demoras horarias. Esto produce volatilidad ante variaciones de la `seed`, dispersando la puntualidad en E3 (`70,0% [60,0% - 75,0%]`).
 
-2. Cuando el `weight` es `street_time`, la proporción entre tránsito y penalizaciones es más armónica. Esto guía a la colonia a tours estables que anulan la mediana de las penalizaciones horarias en ACO ($0,0\text{ min}$ frente a $287,9\text{ min}$ de Random) y estabilizan la puntualidad en E3 (`85,0% [80,0% - 95,0%]`).
+2. Cuando el `weight` es `street_time`, la proporción entre tránsito y penalizaciones es más armónica. Esto guía a la colonia a tours estables que reducen significativamente las penalizaciones horarias en ACO (mediana de $90,5\text{ min}$ para Best ACO frente a $516,1\text{ min}$ de Random) y estabilizan la puntualidad en E3 (`85,0% [80,0% - 95,0%]`).
 
 ![Distribución de Entregas a Tiempo](../img/boxplot_pct_on_time.png)
 *__Figura 5.__ Porcentaje de entregas a tiempo según la métrica optimizada (Distancia vs. Tiempo de Tránsito).*
@@ -477,7 +479,7 @@ Los experimentos revelan una discrepancia estructural en la calidad de la soluci
 La dispersión del costo objetivo consolidado depende de la sintonización de parámetros:
 
 * Reducir `alpha` a $0.8$ en `street_time` incrementa la exploración estocástica de las hormigas, previniendo la convergencia prematura en mínimos locales subóptimos.
-* Incrementar `beta` a $2.5$ en `length` guía el tour mediante la heurística local de Dijkstra. En el escenario E3, esto acota el rango de costo consolidado a `14.038 [13.410 - 14.964] u.c.`. Incluso el peor caso de este rango es más eficiente que la mediana obtenida por Greedy ($15.927\text{ u.c.}$).
+* Incrementar `beta` a $2.5$ en `length` guía el tour mediante la heurística local de Dijkstra. En el escenario E3, esto acota el rango de costo consolidado a `14.520 [13.704 - 15.618] u.c.`. Incluso el peor caso de este rango (`15.618 u.c.`) es más eficiente que la mediana obtenida por Greedy ($15.927\text{ u.c.}$).
 
 ![Distribución de Costos en Escenario Grande E3](../img/boxplot_cost_E3_length.png)
 *__Figura 6.__ Distribución de costos de la ruta en el escenario E3 para distintas configuraciones de la colonia de hormigas.*
